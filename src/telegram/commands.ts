@@ -36,7 +36,7 @@ function formatJob(job: Job): string {
 }
 
 export function registerCommandHandlers(bot: TelegramBot): void {
-  bot.on("message", async msg => {
+  bot.on("message", async (msg: TelegramBot.Message) => {
     const chatId = msg.chat.id;
     const text = (msg.text ?? "").trim();
     if (!text.startsWith("/")) return;
