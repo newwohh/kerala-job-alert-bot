@@ -1,7 +1,7 @@
 import { Job } from "../types/job.js";
 import { getAllSubscriptions } from "../db/subscriptions.js";
 import { matchesAnyKeyword } from "../utils/match.js";
-import { tryMarkNotified } from "../db/userNotifications.js";
+import { tryMarkNotified, unmarkNotified } from "../db/userNotifications.js";
 import { sendJobToChat } from "../telegram/bot.js";
 
 export async function notifySubscribers(job: Job): Promise<void> {
@@ -15,6 +15,10 @@ export async function notifySubscribers(job: Job): Promise<void> {
     const ok = await tryMarkNotified(sub.chatId, job);
     if (!ok) continue;
 
-    await sendJobToChat(sub.chatId, job);
+    try {
+      await sendJobToChat(sub.chatId, job);
+    } catch {
+      await unmarkNotified(sub.chatId, job.link);
+    }
   }
 }

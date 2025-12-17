@@ -33,3 +33,7 @@ export async function tryMarkNotified(chatId: number, job: Job): Promise<boolean
     throw e;
   }
 }
+
+export async function unmarkNotified(chatId: number, link: string): Promise<void> {
+  await getDb().collection<UserNotification>("user_notifications").deleteOne({ chatId, link });
+}

@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { connectMongo } from "./db/mongo.js";
 import { runJobs } from "./jobs/runner.js";
 import { registerCommandHandlers } from "./telegram/commands.js";
+import { registerOnboardingHandlers } from "./telegram/onboarding.js";
 import { bot } from "./telegram/bot.js";
 import { log } from "./utils/logger.js";
 
@@ -12,6 +13,7 @@ async function start(): Promise<void> {
   log("Job Alert Bot running");
 
   registerCommandHandlers(bot);
+  registerOnboardingHandlers(bot);
 
   await runJobs();
   cron.schedule(config.cron, runJobs);

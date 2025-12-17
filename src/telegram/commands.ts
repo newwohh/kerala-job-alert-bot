@@ -1,6 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { addKeyword, listKeywords, removeKeyword } from "../db/subscriptions.js";
 import { searchJobs } from "../jobs/search.js";
+import { sendOnboarding } from "./onboarding.js";
 import { Job } from "../types/job.js";
 
 function escapeHtml(input: string): string {
@@ -15,6 +16,7 @@ function escapeHtml(input: string): string {
 function usage(): string {
   return (
     "<b>Commands</b>\n" +
+    "/onboard\n" +
     "/search &lt;keyword&gt;\n" +
     "/subscribe &lt;keyword&gt;\n" +
     "/unsubscribe &lt;keyword&gt;\n" +
@@ -38,6 +40,9 @@ function formatJob(job: Job): string {
 export function registerCommandHandlers(bot: TelegramBot): void {
   bot.on("message", async (msg: TelegramBot.Message) => {
     const chatId = msg.chat.id;
+    const user = msg.from;
+    if (!user) return;
+    const userId = user.id;
     const text = (msg.text ?? "").trim();
     if (!text.startsWith("/")) return;
 
@@ -46,12 +51,29 @@ export function registerCommandHandlers(bot: TelegramBot): void {
 
     try {
       if (command === "/start" || command === "/help") {
+        if (command === "/start") {
+          if (arg.toLowerCase() === "onboard") {
+            await sendOnboarding(bot, chatId, user);
+            return;
+          }
+
+          if (msg.chat.type === "group" || msg.chat.type === "supergroup") {
+            await sendOnboarding(bot, chatId, user);
+            return;
+          }
+        }
+
         await bot.sendMessage(chatId, usage(), { parse_mode: "HTML" });
         return;
       }
 
+      if (command === "/onboard") {
+        await sendOnboarding(bot, chatId, user);
+        return;
+      }
+
       if (command === "/subscriptions") {
-        const keywords = await listKeywords(chatId);
+        const keywords = await listKeywords(userId);
         const body =
           keywords.length === 0
             ? "No subscriptions yet. Use /subscribe &lt;keyword&gt;"
@@ -65,7 +87,7 @@ export function registerCommandHandlers(bot: TelegramBot): void {
           await bot.sendMessage(chatId, "Usage: /subscribe <keyword>", { parse_mode: "HTML" });
           return;
         }
-        const keywords = await addKeyword(chatId, arg);
+        const keywords = await addKeyword(userId, arg);
         await bot.sendMessage(
           chatId,
           "Saved. Current subscriptions:\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n"),
@@ -79,7 +101,7 @@ export function registerCommandHandlers(bot: TelegramBot): void {
           await bot.sendMessage(chatId, "Usage: /unsubscribe <keyword>", { parse_mode: "HTML" });
           return;
         }
-        const keywords = await removeKeyword(chatId, arg);
+        const keywords = await removeKeyword(userId, arg);
         await bot.sendMessage(
           chatId,
           keywords.length === 0
