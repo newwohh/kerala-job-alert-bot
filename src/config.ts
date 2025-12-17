@@ -33,5 +33,10 @@ export const config = {
   requestTimeoutMs: numberFromEnv("REQUEST_TIMEOUT_MS", 15000),
   maxPages: numberFromEnv("MAX_PAGES", 3),
   infosysEnabled: booleanFromEnv("INFOSYS_ENABLED", false),
-  infosysKeyword: process.env.INFOSYS_KEYWORD ?? ""
+  infosysKeyword: process.env.INFOSYS_KEYWORD ?? "",
+  groupTitle: process.env.GROUP_TITLE ?? "Join our community",
+  groupUrl: process.env.GROUP_URL ?? "",
+  promoText: process.env.PROMO_TEXT ?? "",
+  promoUrl: process.env.PROMO_URL ?? "",
+  promoButtonText: process.env.PROMO_BUTTON_TEXT ?? "Learn more"
 };

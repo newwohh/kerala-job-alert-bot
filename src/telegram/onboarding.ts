@@ -21,6 +21,14 @@ function escapeHtml(input: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function escapeHtmlAttr(input: string): string {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function mention(user: TelegramBot.User): string {
   const name = escapeHtml(user.first_name || user.username || "there");
   return `<a href="tg://user?id=${user.id}">${name}</a>`;
@@ -34,7 +42,7 @@ async function welcomeText(bot: TelegramBot, user: TelegramBot.User): Promise<st
     `<b>Welcome ${mention(user)}!</b>\n\n` +
     `Type /start to set up your job alerts (choose keywords).\n\n` +
     (deepLink
-      ? `To receive <b>DM alerts</b>, open the bot in private and press Start once:\n<a href="${deepLink}">Start bot</a>`
+      ? `To receive <b>DM alerts</b>, open the bot in private and press Start once:\n<a href="${escapeHtmlAttr(deepLink)}">Start bot</a>`
       : `To receive <b>DM alerts</b>, open the bot in private chat and press Start once.`)
   );
 }
@@ -76,7 +84,7 @@ async function onboardingText(bot: TelegramBot, user: TelegramBot.User): Promise
     `Select the keywords you want job alerts for.\n` +
     `You will only receive alerts for selected keywords.\n\n` +
     (deepLink
-      ? `To receive <b>DM alerts</b>, open the bot and press Start once:\n<a href="${deepLink}">Start onboarding</a>\n\n`
+      ? `To receive <b>DM alerts</b>, open the bot and press Start once:\n<a href="${escapeHtmlAttr(deepLink)}">Start onboarding</a>\n\n`
       : `To receive <b>DM alerts</b>, open the bot in private chat and press Start once.\n\n`) +
     `Pick keywords:`
   );
@@ -96,12 +104,11 @@ function formatJob(job: Job): string {
   const company = escapeHtml(job.company);
   const title = escapeHtml(job.title);
   const source = escapeHtml(job.source);
-  const link = job.link;
+  const link = escapeHtmlAttr(job.link);
   return (
-    `<b>${company}</b>\n` +
-    `${title}\n` +
-    `<i>${source}</i>\n` +
-    `<a href="${link}">Open</a>`
+    `<b>${title}</b>\n` +
+    `<b>${company}</b> <i>• ${source}</i>\n` +
+    `<a href="${link}">View & Apply</a>`
   );
 }
 
