@@ -335,7 +335,16 @@ export function registerCommandHandlers(bot: TelegramBot): void {
         const hours = hoursRaw ? Number(hoursRaw) : config.analyticsWindowHours;
         const windowHours = Number.isFinite(hours) && hours > 0 ? hours : config.analyticsWindowHours;
         const since = new Date(Date.now() - windowHours * 60 * 60 * 1000);
-        await postAnalyticsSummary(bot, chatId, since);
+
+        const reportChatId = config.analyticsChatId || config.channelId;
+        await postAnalyticsSummary(bot, reportChatId, since);
+        const sameChat =
+          typeof reportChatId === "number" && typeof chatId === "number"
+            ? reportChatId === chatId
+            : String(reportChatId) === String(chatId);
+        if (!sameChat) {
+          await bot.sendMessage(chatId, "Posted analytics to the channel.", { parse_mode: "HTML" });
+        }
         return;
       }
 

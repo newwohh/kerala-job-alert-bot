@@ -1,6 +1,8 @@
 import TelegramBot from "node-telegram-bot-api";
+import { config } from "../config.js";
 import { addKeyword, listKeywords, removeKeyword } from "../db/subscriptions.js";
 import { findRecentJobsByKeywords } from "../db/jobsSearch.js";
+import { trackEvent } from "../db/analytics.js";
 import { Job } from "../types/job.js";
 
 const KEYWORDS: Array<{ label: string; value: string }> = [
@@ -27,6 +29,14 @@ function escapeHtmlAttr(input: string): string {
     .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+async function safeTrack(event: Parameters<typeof trackEvent>[0]): Promise<void> {
+  if (!config.analyticsEnabled) return;
+  try {
+    await trackEvent(event);
+  } catch {
+  }
 }
 
 function mention(user: TelegramBot.User): string {
@@ -155,6 +165,12 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
 
     for (const member of msg.new_chat_members) {
       if (member.is_bot) continue;
+      await safeTrack({
+        event: "group_join",
+        userId: member.id,
+        chatId: msg.chat.id,
+        chatType: msg.chat.type
+      });
       await sendWelcome(bot, msg.chat.id, member);
     }
   });
@@ -164,6 +180,14 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
     if (!data.startsWith("ob:")) return;
 
     const userId = query.from.id;
+
+    await safeTrack({
+      event: "ui_click",
+      action: data,
+      userId,
+      chatId: query.message?.chat && typeof query.message.chat.id === "number" ? query.message.chat.id : undefined,
+      chatType: query.message?.chat.type
+    });
 
     try {
       const startPrefix = "ob:start:";
@@ -197,6 +221,7 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
       if (data === "ob:done") {
         await bot.answerCallbackQuery(query.id);
         const chatId = query.message?.chat.id ?? userId;
+        await safeTrack({ event: "onboarding", action: "done", userId, chatId: typeof chatId === "number" ? chatId : undefined });
         await showList(bot, chatId, userId);
         try {
           await showSampleJobs(bot, userId, userId);
@@ -217,6 +242,8 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
 
       if (data === "ob:list") {
         await bot.answerCallbackQuery(query.id);
+        const chatId = query.message?.chat.id ?? userId;
+        await safeTrack({ event: "onboarding", action: "list", userId, chatId: typeof chatId === "number" ? chatId : undefined });
         await showList(bot, query.message?.chat.id ?? userId, userId);
         return;
       }
@@ -226,6 +253,13 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
         const kw = data.slice(togglePrefix.length).trim().toLowerCase();
         const current = new Set(await listKeywords(userId));
         const updated = current.has(kw) ? await removeKeyword(userId, kw) : await addKeyword(userId, kw);
+
+        await safeTrack({
+          event: "onboarding",
+          action: current.has(kw) ? "toggle_off" : "toggle_on",
+          userId,
+          meta: { keyword: kw, selectedCount: updated.length }
+        });
 
         await bot.answerCallbackQuery(query.id, {
           text: `Saved ✅ (${updated.length} selected)`,

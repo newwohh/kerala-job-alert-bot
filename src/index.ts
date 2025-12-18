@@ -2,6 +2,7 @@
 import cron from "node-cron";
 import { config } from "./config.js";
 import { connectMongo } from "./db/mongo.js";
+import { postAnalyticsSummary } from "./analytics/report.js";
 import { runJobs } from "./jobs/runner.js";
 import { registerCommandHandlers } from "./telegram/commands.js";
 import { registerOnboardingHandlers } from "./telegram/onboarding.js";
@@ -42,6 +43,15 @@ async function start(): Promise<void> {
     log("Cron enabled:", config.cron);
   } else {
     log("Cron disabled: no automatic job posting");
+  }
+
+  if (config.analyticsEnabled) {
+    const reportChatId = config.analyticsChatId || config.channelId;
+    cron.schedule(config.analyticsCron, async () => {
+      const since = new Date(Date.now() - config.analyticsWindowHours * 60 * 60 * 1000);
+      await postAnalyticsSummary(bot, reportChatId, since);
+    });
+    log("Analytics enabled:", config.analyticsCron);
   }
 }
 
