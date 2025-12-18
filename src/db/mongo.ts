@@ -1,6 +1,7 @@
 import { Db, MongoClient } from "mongodb";
 import { config } from "../config.js";
 import { log } from "../utils/logger.js";
+import { ensureAnalyticsIndexes } from "./analytics.js";
 import { ensureSubscriptionIndexes } from "./subscriptions.js";
 import { ensureUserNotificationIndexes } from "./userNotifications.js";
 
@@ -16,6 +17,7 @@ export async function connectMongo(): Promise<Db> {
   db = client.db(config.mongoDb);
 
   await db.collection("jobs").createIndex({ link: 1 }, { unique: true });
+  await ensureAnalyticsIndexes();
   await ensureSubscriptionIndexes();
   await ensureUserNotificationIndexes();
 

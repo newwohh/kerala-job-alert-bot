@@ -1,6 +1,9 @@
 import TelegramBot from "node-telegram-bot-api";
+import { config } from "../config.js";
 import { addKeyword, listKeywords, removeKeyword } from "../db/subscriptions.js";
 import { searchJobsByKeyword } from "../db/jobsSearch.js";
+import { trackEvent } from "../db/analytics.js";
+import { postAnalyticsSummary } from "../analytics/report.js";
 import { sendOnboarding } from "./onboarding.js";
 import { Job } from "../types/job.js";
 
@@ -14,6 +17,14 @@ function escapeHtml(input: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+async function safeTrack(event: Parameters<typeof trackEvent>[0]): Promise<void> {
+  if (!config.analyticsEnabled) return;
+  try {
+    await trackEvent(event);
+  } catch {
+  }
 }
 
 function escapeHtmlAttr(input: string): string {
@@ -93,6 +104,14 @@ export function registerCommandHandlers(bot: TelegramBot): void {
     const chatId = query.message?.chat.id ?? query.from.id;
     const userId = query.from.id;
 
+    await safeTrack({
+      event: "ui_click",
+      action: data,
+      userId,
+      chatId: typeof chatId === "number" ? chatId : undefined,
+      chatType: query.message?.chat.type
+    });
+
     try {
       if (data === "cmd:onboard") {
         await bot.answerCallbackQuery(query.id);
@@ -139,6 +158,7 @@ export function registerCommandHandlers(bot: TelegramBot): void {
     if (existing && Date.now() > existing.expiresAt) pendingSearch.delete(userId);
 
     if (text === "/cancel") {
+      await safeTrack({ event: "command", action: "/cancel", userId, chatId, chatType: msg.chat.type });
       if (pendingSearch.delete(userId)) {
         await bot.sendMessage(chatId, "Cancelled.", { parse_mode: "HTML" });
       } else {
@@ -152,6 +172,15 @@ export function registerCommandHandlers(bot: TelegramBot): void {
     if (pending && pending.chatId === chatId && !text.startsWith("/")) {
       pendingSearch.delete(userId);
       const keyword = text;
+
+      await safeTrack({
+        event: "search",
+        action: "run",
+        userId,
+        chatId,
+        chatType: msg.chat.type,
+        meta: { keywordLength: keyword.length }
+      });
 
       await bot.sendMessage(chatId, `Searching for: <b>${escapeHtml(keyword)}</b>`, { parse_mode: "HTML" });
       const results = await searchJobsByKeyword(keyword, 10);
@@ -179,6 +208,10 @@ export function registerCommandHandlers(bot: TelegramBot): void {
 
     try {
       if (command === "/start" || command === "/help") {
+        await safeTrack({ event: "command", action: command, userId, chatId, chatType: msg.chat.type });
+        if (command === "/start") {
+          await safeTrack({ event: "start", userId, chatId, chatType: msg.chat.type, meta: { payload: arg } });
+        }
         if (command === "/start") {
           if (arg.toLowerCase() === "onboard") {
             await sendOnboarding(bot, chatId, user);
@@ -196,11 +229,13 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       }
 
       if (command === "/onboard") {
+        await safeTrack({ event: "command", action: "/onboard", userId, chatId, chatType: msg.chat.type });
         await sendOnboarding(bot, chatId, user);
         return;
       }
 
       if (command === "/subscriptions") {
+        await safeTrack({ event: "command", action: "/subscriptions", userId, chatId, chatType: msg.chat.type });
         const keywords = await listKeywords(userId);
         const body =
           keywords.length === 0
@@ -211,6 +246,7 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       }
 
       if (command === "/subscribe") {
+        await safeTrack({ event: "command", action: "/subscribe", userId, chatId, chatType: msg.chat.type });
         if (!arg) {
           await bot.sendMessage(chatId, "Usage: /subscribe <keyword>", { parse_mode: "HTML" });
           return;
@@ -225,6 +261,7 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       }
 
       if (command === "/unsubscribe") {
+        await safeTrack({ event: "command", action: "/unsubscribe", userId, chatId, chatType: msg.chat.type });
         if (!arg) {
           await bot.sendMessage(chatId, "Usage: /unsubscribe <keyword>", { parse_mode: "HTML" });
           return;
@@ -241,8 +278,10 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       }
 
       if (command === "/search") {
+        await safeTrack({ event: "command", action: "/search", userId, chatId, chatType: msg.chat.type });
         if (!arg) {
           pendingSearch.set(userId, { chatId, expiresAt: Date.now() + PENDING_SEARCH_TTL_MS });
+          await safeTrack({ event: "search", action: "prompt", userId, chatId, chatType: msg.chat.type });
           await bot.sendMessage(
             chatId,
             "Send me a keyword to search (example: <b>react</b>, <b>node</b>, <b>python</b>).\nType /cancel to stop.",
@@ -252,6 +291,16 @@ export function registerCommandHandlers(bot: TelegramBot): void {
         }
 
         await bot.sendMessage(chatId, `Searching for: <b>${escapeHtml(arg)}</b>`, { parse_mode: "HTML" });
+
+        await safeTrack({
+          event: "search",
+          action: "run",
+          userId,
+          chatId,
+          chatType: msg.chat.type,
+          meta: { keywordLength: arg.length }
+        });
+
         const results = await searchJobsByKeyword(arg, 10);
         if (results.length === 0) {
           await bot.sendMessage(chatId, "No matching jobs found.\n\n" + resultsHelp(), {
@@ -267,6 +316,26 @@ export function registerCommandHandlers(bot: TelegramBot): void {
           disable_web_page_preview: true,
           reply_markup: resultsKeyboard()
         });
+        return;
+      }
+
+      if (command === "/stats") {
+        await safeTrack({ event: "command", action: "/stats", userId, chatId, chatType: msg.chat.type });
+        if (!config.analyticsEnabled) {
+          await bot.sendMessage(chatId, "Analytics is disabled.", { parse_mode: "HTML" });
+          return;
+        }
+
+        if (!config.analyticsAdminIds.includes(userId)) {
+          await bot.sendMessage(chatId, "Not allowed.", { parse_mode: "HTML" });
+          return;
+        }
+
+        const hoursRaw = arg.trim();
+        const hours = hoursRaw ? Number(hoursRaw) : config.analyticsWindowHours;
+        const windowHours = Number.isFinite(hours) && hours > 0 ? hours : config.analyticsWindowHours;
+        const since = new Date(Date.now() - windowHours * 60 * 60 * 1000);
+        await postAnalyticsSummary(bot, chatId, since);
         return;
       }
 

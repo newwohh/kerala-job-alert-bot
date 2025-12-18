@@ -24,6 +24,15 @@ function booleanFromEnv(name: string, fallback: boolean): boolean {
   throw new Error(`Invalid boolean env: ${name}`);
 }
 
+function numberListFromEnv(name: string): number[] {
+  const raw = (process.env[name] ?? "").trim();
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map(s => Number(s.trim()))
+    .filter(n => Number.isFinite(n));
+}
+
 export const config = {
   botToken: required("BOT_TOKEN"),
   channelId: required("CHANNEL_ID"),
@@ -31,6 +40,11 @@ export const config = {
   mongoDb: process.env.MONGODB_DB ?? "job_alerts",
   cron: process.env.CRON_SCHEDULE ?? "*/20 * * * *",
   cronEnabled: booleanFromEnv("CRON_ENABLED", true),
+  analyticsEnabled: booleanFromEnv("ANALYTICS_ENABLED", false),
+  analyticsCron: process.env.ANALYTICS_CRON ?? "0 9 * * *",
+  analyticsWindowHours: numberFromEnv("ANALYTICS_WINDOW_HOURS", 24),
+  analyticsChatId: process.env.ANALYTICS_CHAT_ID ?? "",
+  analyticsAdminIds: numberListFromEnv("ANALYTICS_ADMIN_IDS"),
   requestTimeoutMs: numberFromEnv("REQUEST_TIMEOUT_MS", 15000),
   maxPages: numberFromEnv("MAX_PAGES", 3),
   infosysEnabled: booleanFromEnv("INFOSYS_ENABLED", false),
