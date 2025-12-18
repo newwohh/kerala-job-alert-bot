@@ -18,14 +18,52 @@ function escapeHtml(input: string): string {
 
 function usage(): string {
   return (
-    "<b>Commands</b>\n" +
-    "/onboard\n" +
-    "/search &lt;keyword&gt;\n" +
-    "/subscribe &lt;keyword&gt;\n" +
-    "/unsubscribe &lt;keyword&gt;\n" +
-    "/subscriptions\n" +
-    "/cancel\n"
+    "<b>🔔 Job Alert Bot</b>\n" +
+    "<i>Get instant job alerts based on your keywords.</i>\n\n" +
+    "<b>🚀 Quick Start</b>\n" +
+    "Tap <b>🧩 Onboard</b> → pick keywords → tap <b>✅ Done</b>.\n\n" +
+    "<b>🧭 Commands</b>\n" +
+    "<pre>" +
+    "/onboard          🧩 Choose keywords\n" +
+    "/search  keyword  🔎 Search stored jobs\n" +
+    "/subscribe keyword ➕ Add a keyword\n" +
+    "/unsubscribe keyword ➖ Remove a keyword\n" +
+    "/subscriptions    📌 View your keywords\n" +
+    "/cancel           🛑 Cancel interactive search" +
+    "</pre>\n" +
+    "<b>✨ Examples</b>\n" +
+    "<pre>/search react\n/subscribe python</pre>\n" +
+    "<b>� Tips</b>\n" +
+    "- For <b>DM alerts</b>, open the bot in private chat and press Start once\n" +
+    "- In groups, use <b>/onboard</b> or the buttons below"
   );
+}
+
+function usageKeyboard(): TelegramBot.InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [{ text: "🧩 Onboard", callback_data: "cmd:onboard" }],
+      [
+        { text: "📌 My keywords", callback_data: "cmd:subs" },
+        { text: "🔎 Search", callback_data: "cmd:search" }
+      ]
+    ]
+  };
+}
+
+function resultsHelp(): string {
+  return (
+    "<b>🔁 Keep searching</b>\n" +
+    "<pre>/search</pre>" +
+    "or tap <b>🔎 Search</b> below.\n" +
+    "Use <b>/cancel</b> to stop interactive search."
+  );
+}
+
+function resultsKeyboard(): TelegramBot.InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [[{ text: "🔎 Search again", callback_data: "cmd:search" }]]
+  };
 }
 
 function formatJob(job: Job): string {
@@ -42,6 +80,48 @@ function formatJob(job: Job): string {
 }
 
 export function registerCommandHandlers(bot: TelegramBot): void {
+  bot.on("callback_query", async query => {
+    const data = query.data ?? "";
+    if (!data.startsWith("cmd:")) return;
+
+    const chatId = query.message?.chat.id ?? query.from.id;
+    const userId = query.from.id;
+
+    try {
+      if (data === "cmd:onboard") {
+        await bot.answerCallbackQuery(query.id);
+        await sendOnboarding(bot, chatId, query.from);
+        return;
+      }
+
+      if (data === "cmd:subs") {
+        await bot.answerCallbackQuery(query.id);
+        const keywords = await listKeywords(userId);
+        const body =
+          keywords.length === 0
+            ? "No subscriptions yet. Use <b>/subscribe</b> <code>keyword</code>"
+            : "<b>Your subscriptions</b>\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n");
+        await bot.sendMessage(chatId, body, { parse_mode: "HTML" });
+        return;
+      }
+
+      if (data === "cmd:search") {
+        pendingSearch.set(userId, { chatId, expiresAt: Date.now() + PENDING_SEARCH_TTL_MS });
+        await bot.answerCallbackQuery(query.id);
+        await bot.sendMessage(
+          chatId,
+          "Send me a keyword to search (example: <b>react</b>, <b>node</b>, <b>python</b>).\nType /cancel to stop.",
+          { parse_mode: "HTML" }
+        );
+        return;
+      }
+
+      await bot.answerCallbackQuery(query.id);
+    } catch (e: any) {
+      await bot.answerCallbackQuery(query.id, { text: String(e?.message ?? e) });
+    }
+  });
+
   bot.on("message", async (msg: TelegramBot.Message) => {
     const chatId = msg.chat.id;
     const user = msg.from;
@@ -70,14 +150,18 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       await bot.sendMessage(chatId, `Searching for: <b>${escapeHtml(keyword)}</b>`, { parse_mode: "HTML" });
       const results = await searchJobsByKeyword(keyword, 10);
       if (results.length === 0) {
-        await bot.sendMessage(chatId, "No matching jobs found.", { parse_mode: "HTML" });
+        await bot.sendMessage(chatId, "No matching jobs found.\n\n" + resultsHelp(), {
+          parse_mode: "HTML",
+          reply_markup: resultsKeyboard()
+        });
         return;
       }
 
-      const message = "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n");
+      const message = "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n") + "\n\n────────\n" + resultsHelp();
       await bot.sendMessage(chatId, message, {
         parse_mode: "HTML",
-        disable_web_page_preview: true
+        disable_web_page_preview: true,
+        reply_markup: resultsKeyboard()
       });
       return;
     }
@@ -101,7 +185,7 @@ export function registerCommandHandlers(bot: TelegramBot): void {
           }
         }
 
-        await bot.sendMessage(chatId, usage(), { parse_mode: "HTML" });
+        await bot.sendMessage(chatId, usage(), { parse_mode: "HTML", reply_markup: usageKeyboard() });
         return;
       }
 
@@ -164,19 +248,23 @@ export function registerCommandHandlers(bot: TelegramBot): void {
         await bot.sendMessage(chatId, `Searching for: <b>${escapeHtml(arg)}</b>`, { parse_mode: "HTML" });
         const results = await searchJobsByKeyword(arg, 10);
         if (results.length === 0) {
-          await bot.sendMessage(chatId, "No matching jobs found.", { parse_mode: "HTML" });
+          await bot.sendMessage(chatId, "No matching jobs found.\n\n" + resultsHelp(), {
+            parse_mode: "HTML",
+            reply_markup: resultsKeyboard()
+          });
           return;
         }
 
-        const message = "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n");
+        const message = "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n") + "\n\n────────\n" + resultsHelp();
         await bot.sendMessage(chatId, message, {
           parse_mode: "HTML",
-          disable_web_page_preview: true
+          disable_web_page_preview: true,
+          reply_markup: resultsKeyboard()
         });
         return;
       }
 
-      await bot.sendMessage(chatId, usage(), { parse_mode: "HTML" });
+      await bot.sendMessage(chatId, usage(), { parse_mode: "HTML", reply_markup: usageKeyboard() });
     } catch (e: any) {
       await bot.sendMessage(chatId, `Error: ${escapeHtml(String(e?.message ?? e))}`, { parse_mode: "HTML" });
     }

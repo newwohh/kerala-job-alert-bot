@@ -195,8 +195,22 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
 
       if (data === "ob:done") {
         await bot.answerCallbackQuery(query.id);
-        await showList(bot, query.message?.chat.id ?? userId, userId);
-        await showSampleJobs(bot, query.message?.chat.id ?? userId, userId);
+        const chatId = query.message?.chat.id ?? userId;
+        await showList(bot, chatId, userId);
+        try {
+          await showSampleJobs(bot, userId, userId);
+          if (chatId !== userId) {
+            await bot.sendMessage(chatId, "Sent you sample matching jobs in DM.", { parse_mode: "HTML" });
+          }
+        } catch {
+          if (chatId !== userId) {
+            await bot.sendMessage(
+              chatId,
+              "I couldn't DM you. Please open the bot in private chat and press Start once, then click Done again.",
+              { parse_mode: "HTML" }
+            );
+          }
+        }
         return;
       }
 
@@ -210,10 +224,12 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
       if (data.startsWith(togglePrefix)) {
         const kw = data.slice(togglePrefix.length).trim().toLowerCase();
         const current = new Set(await listKeywords(userId));
-        if (current.has(kw)) await removeKeyword(userId, kw);
-        else await addKeyword(userId, kw);
+        const updated = current.has(kw) ? await removeKeyword(userId, kw) : await addKeyword(userId, kw);
 
-        await bot.answerCallbackQuery(query.id);
+        await bot.answerCallbackQuery(query.id, {
+          text: `Saved ✅ (${updated.length} selected)`,
+          show_alert: false
+        });
 
         if (query.message?.chat && typeof query.message.message_id === "number") {
           const text = await onboardingText(bot, query.from);
