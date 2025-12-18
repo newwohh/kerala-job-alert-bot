@@ -31,12 +31,11 @@ export async function findRecentJobsByKeywords(keywords: string[], limit: number
   const normalized = keywords.map(k => k.trim()).filter(Boolean);
   if (normalized.length === 0) return [];
 
-  const orFilters: Filter<JobDoc>[] = normalized.map(k => {
+  const orFilters: Filter<JobDoc>[] = [];
+  for (const k of normalized) {
     const rx = new RegExp(escapeRegex(k), "i");
-    return {
-      $or: [{ title: rx }, { company: rx }, { source: rx }]
-    };
-  });
+    orFilters.push({ title: rx }, { company: rx }, { source: rx });
+  }
 
   const filter: Filter<JobDoc> = { $or: orFilters };
 

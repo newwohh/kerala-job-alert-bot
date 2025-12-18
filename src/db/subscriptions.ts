@@ -25,19 +25,19 @@ export async function addKeyword(chatId: number, keyword: string): Promise<strin
   if (!normalized) return listKeywords(chatId);
 
   const now = new Date();
-  const res = await getDb()
+  await getDb()
     .collection<Subscription>("subscriptions")
-    .findOneAndUpdate(
+    .updateOne(
       { chatId },
       {
         $setOnInsert: { chatId, createdAt: now, keywords: [] },
         $set: { updatedAt: now },
         $addToSet: { keywords: normalized }
       },
-      { upsert: true, returnDocument: "after" }
+      { upsert: true }
     );
 
-  return Array.isArray(res?.keywords) ? res!.keywords : [];
+  return listKeywords(chatId);
 }
 
 export async function removeKeyword(chatId: number, keyword: string): Promise<string[]> {
@@ -45,18 +45,17 @@ export async function removeKeyword(chatId: number, keyword: string): Promise<st
   if (!normalized) return listKeywords(chatId);
 
   const now = new Date();
-  const res = await getDb()
+  await getDb()
     .collection<Subscription>("subscriptions")
-    .findOneAndUpdate(
+    .updateOne(
       { chatId },
       {
         $pull: { keywords: normalized },
         $set: { updatedAt: now }
-      },
-      { returnDocument: "after" }
+      }
     );
 
-  return Array.isArray(res?.keywords) ? res!.keywords : [];
+  return listKeywords(chatId);
 }
 
 export async function getAllSubscriptions(): Promise<Subscription[]> {

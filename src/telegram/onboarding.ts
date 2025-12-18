@@ -118,7 +118,7 @@ async function showSampleJobs(bot: TelegramBot, chatId: number | string, userId:
 
   const jobs = await findRecentJobsByKeywords(keywords, 5);
   if (jobs.length === 0) {
-    await bot.sendMessage(chatId, "No recent matching jobs found yet (try again later).", { parse_mode: "HTML" });
+    await bot.sendMessage(chatId, "No matching jobs found.", { parse_mode: "HTML" });
     return;
   }
 
