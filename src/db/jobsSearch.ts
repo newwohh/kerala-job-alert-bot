@@ -8,6 +8,25 @@ function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+export async function searchJobsByKeyword(keyword: string, limit: number): Promise<Job[]> {
+  const k = keyword.trim();
+  if (!k) return [];
+
+  const rx = new RegExp(escapeRegex(k), "i");
+  const filter: Filter<JobDoc> = {
+    $or: [{ title: rx }, { company: rx }, { source: rx }]
+  };
+
+  const docs = await getDb()
+    .collection<JobDoc>("jobs")
+    .find(filter)
+    .sort({ createdAt: -1 })
+    .limit(Math.max(1, limit))
+    .toArray();
+
+  return docs.map(d => ({ title: d.title, company: d.company, source: d.source, link: d.link }));
+}
+
 export async function findRecentJobsByKeywords(keywords: string[], limit: number): Promise<Job[]> {
   const normalized = keywords.map(k => k.trim()).filter(Boolean);
   if (normalized.length === 0) return [];

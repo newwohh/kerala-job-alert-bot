@@ -30,6 +30,7 @@ export const config = {
   mongoUri: required("MONGODB_URI"),
   mongoDb: process.env.MONGODB_DB ?? "job_alerts",
   cron: process.env.CRON_SCHEDULE ?? "*/20 * * * *",
+  cronEnabled: booleanFromEnv("CRON_ENABLED", true),
   requestTimeoutMs: numberFromEnv("REQUEST_TIMEOUT_MS", 15000),
   maxPages: numberFromEnv("MAX_PAGES", 3),
   infosysEnabled: booleanFromEnv("INFOSYS_ENABLED", false),
@@ -38,5 +39,7 @@ export const config = {
   groupUrl: process.env.GROUP_URL ?? "",
   promoText: process.env.PROMO_TEXT ?? "",
   promoUrl: process.env.PROMO_URL ?? "",
-  promoButtonText: process.env.PROMO_BUTTON_TEXT ?? "Learn more"
+  promoButtonText: process.env.PROMO_BUTTON_TEXT ?? "Learn more",
+  runJobsOnStartup: booleanFromEnv("RUN_JOBS_ON_STARTUP", false),
+  onboardingChatId: process.env.ONBOARDING_CHAT_ID ?? ""
 };

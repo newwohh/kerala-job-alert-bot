@@ -40,7 +40,7 @@ async function welcomeText(bot: TelegramBot, user: TelegramBot.User): Promise<st
 
   return (
     `<b>Welcome ${mention(user)}!</b>\n\n` +
-    `Type /start to set up your job alerts (choose keywords).\n\n` +
+    `Click <b>Start</b> below (or type /start) to set up your job alerts.\n\n` +
     (deepLink
       ? `To receive <b>DM alerts</b>, open the bot in private and press Start once:\n<a href="${escapeHtmlAttr(deepLink)}">Start bot</a>`
       : `To receive <b>DM alerts</b>, open the bot in private chat and press Start once.`)
@@ -141,7 +141,10 @@ export async function sendWelcome(bot: TelegramBot, chatId: number | string, use
   const text = await welcomeText(bot, user);
   await bot.sendMessage(chatId, text, {
     parse_mode: "HTML",
-    disable_web_page_preview: true
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [[{ text: "Start", callback_data: `ob:start:${user.id}` }]]
+    }
   });
 }
 
@@ -162,6 +165,34 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
     const userId = query.from.id;
 
     try {
+      const startPrefix = "ob:start:";
+      if (data.startsWith(startPrefix)) {
+        const expectedIdRaw = data.slice(startPrefix.length).trim();
+        const expectedId = Number(expectedIdRaw);
+        if (!Number.isFinite(expectedId) || expectedId !== userId) {
+          await bot.answerCallbackQuery(query.id, { text: "This button is not for you." });
+          return;
+        }
+
+        await bot.answerCallbackQuery(query.id);
+
+        if (query.message?.chat && typeof query.message.message_id === "number") {
+          const text = await onboardingText(bot, query.from);
+          const keyboard = await buildKeyboard(userId);
+          await bot.editMessageText(text, {
+            chat_id: query.message.chat.id,
+            message_id: query.message.message_id,
+            parse_mode: "HTML",
+            reply_markup: keyboard,
+            disable_web_page_preview: true
+          });
+        } else {
+          await sendOnboarding(bot, userId, query.from);
+        }
+
+        return;
+      }
+
       if (data === "ob:done") {
         await bot.answerCallbackQuery(query.id);
         await showList(bot, query.message?.chat.id ?? userId, userId);

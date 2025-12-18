@@ -1,8 +1,11 @@
 import TelegramBot from "node-telegram-bot-api";
 import { addKeyword, listKeywords, removeKeyword } from "../db/subscriptions.js";
-import { searchJobs } from "../jobs/search.js";
+import { searchJobsByKeyword } from "../db/jobsSearch.js";
 import { sendOnboarding } from "./onboarding.js";
 import { Job } from "../types/job.js";
+
+const pendingSearch = new Map<number, { chatId: number | string; expiresAt: number }>();
+const PENDING_SEARCH_TTL_MS = 2 * 60 * 1000;
 
 function escapeHtml(input: string): string {
   return input
@@ -20,7 +23,8 @@ function usage(): string {
     "/search &lt;keyword&gt;\n" +
     "/subscribe &lt;keyword&gt;\n" +
     "/unsubscribe &lt;keyword&gt;\n" +
-    "/subscriptions\n"
+    "/subscriptions\n" +
+    "/cancel\n"
   );
 }
 
@@ -44,6 +48,40 @@ export function registerCommandHandlers(bot: TelegramBot): void {
     if (!user) return;
     const userId = user.id;
     const text = (msg.text ?? "").trim();
+
+    const existing = pendingSearch.get(userId);
+    if (existing && Date.now() > existing.expiresAt) pendingSearch.delete(userId);
+
+    if (text === "/cancel") {
+      if (pendingSearch.delete(userId)) {
+        await bot.sendMessage(chatId, "Cancelled.", { parse_mode: "HTML" });
+      } else {
+        await bot.sendMessage(chatId, "Nothing to cancel.", { parse_mode: "HTML" });
+      }
+      return;
+    }
+
+    // Interactive search: if we asked for a keyword, use the next non-command message.
+    const pending = pendingSearch.get(userId);
+    if (pending && pending.chatId === chatId && !text.startsWith("/")) {
+      pendingSearch.delete(userId);
+      const keyword = text;
+
+      await bot.sendMessage(chatId, `Searching for: <b>${escapeHtml(keyword)}</b>`, { parse_mode: "HTML" });
+      const results = await searchJobsByKeyword(keyword, 10);
+      if (results.length === 0) {
+        await bot.sendMessage(chatId, "No matching jobs found.", { parse_mode: "HTML" });
+        return;
+      }
+
+      const message = "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n");
+      await bot.sendMessage(chatId, message, {
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      });
+      return;
+    }
+
     if (!text.startsWith("/")) return;
 
     const [command, ...rest] = text.split(/\s+/);
@@ -114,20 +152,23 @@ export function registerCommandHandlers(bot: TelegramBot): void {
 
       if (command === "/search") {
         if (!arg) {
-          await bot.sendMessage(chatId, "Usage: /search <keyword>", { parse_mode: "HTML" });
+          pendingSearch.set(userId, { chatId, expiresAt: Date.now() + PENDING_SEARCH_TTL_MS });
+          await bot.sendMessage(
+            chatId,
+            "Send me a keyword to search (example: <b>react</b>, <b>node</b>, <b>python</b>).\nType /cancel to stop.",
+            { parse_mode: "HTML" }
+          );
           return;
         }
 
         await bot.sendMessage(chatId, `Searching for: <b>${escapeHtml(arg)}</b>`, { parse_mode: "HTML" });
-        const results = await searchJobs(arg);
-        const top = results.slice(0, 10);
-
-        if (top.length === 0) {
+        const results = await searchJobsByKeyword(arg, 10);
+        if (results.length === 0) {
           await bot.sendMessage(chatId, "No matching jobs found.", { parse_mode: "HTML" });
           return;
         }
 
-        const message = "<b>Results</b>\n\n" + top.map(formatJob).join("\n\n");
+        const message = "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n");
         await bot.sendMessage(chatId, message, {
           parse_mode: "HTML",
           disable_web_page_preview: true

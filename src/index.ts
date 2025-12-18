@@ -15,8 +15,32 @@ async function start(): Promise<void> {
   registerCommandHandlers(bot);
   registerOnboardingHandlers(bot);
 
-  await runJobs();
-  cron.schedule(config.cron, runJobs);
+  if (config.onboardingChatId) {
+    const me = await bot.getMe();
+    const deepLink = me.username ? `https://t.me/${me.username}?start=onboard` : "";
+    const msg =
+      "<b>Job Alerts Bot is online</b>\n\n" +
+      "Type /start in this group to choose your job keywords.\n" +
+      (deepLink
+        ? `For DM alerts, open the bot privately once:\n<a href=\"${deepLink}\">Start bot</a>`
+        : "For DM alerts, open the bot in private chat and press Start once.");
+
+    await bot.sendMessage(config.onboardingChatId, msg, {
+      parse_mode: "HTML",
+      disable_web_page_preview: true
+    });
+  }
+
+  if (config.runJobsOnStartup) {
+    await runJobs();
+  }
+
+  if (config.cronEnabled) {
+    cron.schedule(config.cron, runJobs);
+    log("Cron enabled:", config.cron);
+  } else {
+    log("Cron disabled: no automatic job posting");
+  }
 }
 
 start().catch(err => {
