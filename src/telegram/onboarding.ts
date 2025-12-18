@@ -106,9 +106,10 @@ function formatJob(job: Job): string {
   const source = escapeHtml(job.source);
   const link = escapeHtmlAttr(job.link);
   return (
-    `<b>${title}</b>\n` +
-    `<b>${company}</b> <i>• ${source}</i>\n` +
-    `<a href="${link}">View & Apply</a>`
+    `💼 <b>${title}</b>\n` +
+    `🏢 <b>${company}</b>\n` +
+    `📍 <i>${source}</i>\n` +
+    `🔗 <a href="${link}">Open & Apply</a>`
   );
 }
 

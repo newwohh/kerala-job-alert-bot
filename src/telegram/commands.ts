@@ -16,6 +16,14 @@ function escapeHtml(input: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function escapeHtmlAttr(input: string): string {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function usage(): string {
   return (
     "<b>🔔 Job Alert Bot</b>\n" +
@@ -23,17 +31,16 @@ function usage(): string {
     "<b>🚀 Quick Start</b>\n" +
     "Tap <b>🧩 Onboard</b> → pick keywords → tap <b>✅ Done</b>.\n\n" +
     "<b>🧭 Commands</b>\n" +
-    "<pre>" +
-    "/onboard          🧩 Choose keywords\n" +
-    "/search  keyword  🔎 Search stored jobs\n" +
-    "/subscribe keyword ➕ Add a keyword\n" +
-    "/unsubscribe keyword ➖ Remove a keyword\n" +
-    "/subscriptions    📌 View your keywords\n" +
-    "/cancel           🛑 Cancel interactive search" +
-    "</pre>\n" +
+    "🧩 /onboard — Choose keywords\n" +
+    "🔎 /search <code>keyword</code> — Search stored jobs\n" +
+    "➕ /subscribe <code>keyword</code> — Add a keyword\n" +
+    "➖ /unsubscribe <code>keyword</code> — Remove a keyword\n" +
+    "📌 /subscriptions — View your keywords\n" +
+    "🛑 /cancel — Cancel interactive search\n\n" +
     "<b>✨ Examples</b>\n" +
-    "<pre>/search react\n/subscribe python</pre>\n" +
-    "<b>� Tips</b>\n" +
+    "/search react\n" +
+    "/subscribe python\n\n" +
+    "<b>💡 Tips</b>\n" +
     "- For <b>DM alerts</b>, open the bot in private chat and press Start once\n" +
     "- In groups, use <b>/onboard</b> or the buttons below"
   );
@@ -54,9 +61,8 @@ function usageKeyboard(): TelegramBot.InlineKeyboardMarkup {
 function resultsHelp(): string {
   return (
     "<b>🔁 Keep searching</b>\n" +
-    "<pre>/search</pre>" +
-    "or tap <b>🔎 Search</b> below.\n" +
-    "Use <b>/cancel</b> to stop interactive search."
+    "/search — start a new search (or tap <b>🔎 Search</b> below)\n" +
+    "/cancel — stop interactive search"
   );
 }
 
@@ -70,12 +76,12 @@ function formatJob(job: Job): string {
   const title = escapeHtml(job.title);
   const company = escapeHtml(job.company);
   const source = escapeHtml(job.source);
-  const link = job.link;
+  const link = escapeHtmlAttr(job.link);
   return (
-    `<b>${company}</b>\n` +
-    `${title}\n` +
-    `<i>${source}</i>\n` +
-    `<a href="${link}">Open</a>`
+    `💼 <b>${title}</b>\n` +
+    `🏢 <b>${company}</b>\n` +
+    `📍 <i>${source}</i>\n` +
+    `🔗 <a href="${link}">Open & Apply</a>`
   );
 }
 
