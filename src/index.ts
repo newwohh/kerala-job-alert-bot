@@ -10,7 +10,7 @@ import { log } from "./utils/logger.js";
 
 async function start(): Promise<void> {
   await connectMongo();
-  // logs starting
+  // logs starting message
   log("Job Alert Bot running");
 
 
