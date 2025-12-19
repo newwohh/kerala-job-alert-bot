@@ -2,7 +2,29 @@ import TelegramBot from "node-telegram-bot-api";
 import { config } from "../config.js";
 import { Job } from "../types/job.js";
 
-export const bot = new TelegramBot(config.botToken, { polling: true });
+export const bot = new TelegramBot(config.botToken, {
+  polling: { autoStart: false }
+});
+
+export async function startBotPolling(): Promise<void> {
+  bot.on("polling_error", err => {
+    // eslint-disable-next-line no-console
+    console.error("Polling error:", err);
+  });
+  bot.on("webhook_error", err => {
+    // eslint-disable-next-line no-console
+    console.error("Webhook error:", err);
+  });
+
+  try {
+    await bot.deleteWebHook();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("Failed to delete webhook:", err);
+  }
+
+  bot.startPolling();
+}
 
 function escapeHtml(input: string): string {
   return input

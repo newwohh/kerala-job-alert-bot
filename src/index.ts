@@ -7,7 +7,7 @@ import { postAnalyticsSummary } from "./analytics/report.js";
 import { runJobs } from "./jobs/runner.js";
 import { registerCommandHandlers } from "./telegram/commands.js";
 import { registerOnboardingHandlers } from "./telegram/onboarding.js";
-import { bot } from "./telegram/bot.js";
+import { bot, startBotPolling } from "./telegram/bot.js";
 import { log } from "./utils/logger.js";
 
 function startHealthServer(): void {
@@ -43,6 +43,7 @@ async function start(): Promise<void> {
 
   registerCommandHandlers(bot);
   registerOnboardingHandlers(bot);
+  await startBotPolling();
 
   if (config.onboardingChatId) {
     const me = await bot.getMe();
