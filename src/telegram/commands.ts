@@ -35,6 +35,24 @@ function escapeHtmlAttr(input: string): string {
     .replaceAll(">", "&gt;");
 }
 
+function joinFooterText(): string {
+  if (!config.groupUrl) return "";
+  const groupTitle = escapeHtml(config.groupTitle);
+  const groupUrl = escapeHtmlAttr(config.groupUrl);
+  return `\n\n────────\n<b>${groupTitle}</b>\n<a href="${groupUrl}">Join group</a>`;
+}
+
+function withJoinFooter(text: string): string {
+  return text + joinFooterText();
+}
+
+function withJoinKeyboard(markup?: TelegramBot.InlineKeyboardMarkup): TelegramBot.InlineKeyboardMarkup | undefined {
+  if (!config.groupUrl) return markup;
+  const joinRow: TelegramBot.InlineKeyboardButton[] = [{ text: config.groupTitle, url: config.groupUrl }];
+  if (!markup) return { inline_keyboard: [joinRow] };
+  return { inline_keyboard: [...markup.inline_keyboard, joinRow] };
+}
+
 function usage(): string {
   return (
     "<b>🔔 Job Alert Bot</b>\n" +
@@ -53,12 +71,13 @@ function usage(): string {
     "/subscribe python\n\n" +
     "<b>💡 Tips</b>\n" +
     "- For <b>DM alerts</b>, open the bot in private chat and press Start once\n" +
-    "- In groups, use <b>/onboard</b> or the buttons below"
+    "- In groups, use <b>/onboard</b> or the buttons below" +
+    joinFooterText()
   );
 }
 
 function usageKeyboard(): TelegramBot.InlineKeyboardMarkup {
-  return {
+  return withJoinKeyboard({
     inline_keyboard: [
       [{ text: "🧩 Onboard", callback_data: "cmd:onboard" }],
       [
@@ -66,7 +85,7 @@ function usageKeyboard(): TelegramBot.InlineKeyboardMarkup {
         { text: "🔎 Search", callback_data: "cmd:search" }
       ]
     ]
-  };
+  })!;
 }
 
 function resultsHelp(): string {
@@ -78,9 +97,9 @@ function resultsHelp(): string {
 }
 
 function resultsKeyboard(): TelegramBot.InlineKeyboardMarkup {
-  return {
+  return withJoinKeyboard({
     inline_keyboard: [[{ text: "🔎 Search again", callback_data: "cmd:search" }]]
-  };
+  })!;
 }
 
 function formatJob(job: Job): string {
@@ -122,11 +141,16 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       if (data === "cmd:subs") {
         await bot.answerCallbackQuery(query.id);
         const keywords = await listKeywords(userId);
-        const body =
+        const body = withJoinFooter(
           keywords.length === 0
             ? "No subscriptions yet. Use <b>/subscribe</b> <code>keyword</code>"
-            : "<b>Your subscriptions</b>\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n");
-        await bot.sendMessage(chatId, body, { parse_mode: "HTML" });
+            : "<b>Your subscriptions</b>\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n")
+        );
+        await bot.sendMessage(chatId, body, {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: withJoinKeyboard(undefined)
+        });
         return;
       }
 
@@ -135,8 +159,10 @@ export function registerCommandHandlers(bot: TelegramBot): void {
         await bot.answerCallbackQuery(query.id);
         await bot.sendMessage(
           chatId,
-          "Send me a keyword to search (example: <b>react</b>, <b>node</b>, <b>python</b>).\nType /cancel to stop.",
-          { parse_mode: "HTML" }
+          withJoinFooter(
+            "Send me a keyword to search (example: <b>react</b>, <b>node</b>, <b>python</b>).\nType /cancel to stop."
+          ),
+          { parse_mode: "HTML", disable_web_page_preview: true, reply_markup: withJoinKeyboard(undefined) }
         );
         return;
       }
@@ -160,9 +186,17 @@ export function registerCommandHandlers(bot: TelegramBot): void {
     if (text === "/cancel") {
       await safeTrack({ event: "command", action: "/cancel", userId, chatId, chatType: msg.chat.type });
       if (pendingSearch.delete(userId)) {
-        await bot.sendMessage(chatId, "Cancelled.", { parse_mode: "HTML" });
+        await bot.sendMessage(chatId, withJoinFooter("Cancelled."), {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: withJoinKeyboard(undefined)
+        });
       } else {
-        await bot.sendMessage(chatId, "Nothing to cancel.", { parse_mode: "HTML" });
+        await bot.sendMessage(chatId, withJoinFooter("Nothing to cancel."), {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: withJoinKeyboard(undefined)
+        });
       }
       return;
     }
@@ -182,17 +216,24 @@ export function registerCommandHandlers(bot: TelegramBot): void {
         meta: { keywordLength: keyword.length }
       });
 
-      await bot.sendMessage(chatId, `Searching for: <b>${escapeHtml(keyword)}</b>`, { parse_mode: "HTML" });
+      await bot.sendMessage(chatId, withJoinFooter(`Searching for: <b>${escapeHtml(keyword)}</b>`), {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: withJoinKeyboard(undefined)
+      });
       const results = await searchJobsByKeyword(keyword, 10);
       if (results.length === 0) {
-        await bot.sendMessage(chatId, "No matching jobs found.\n\n" + resultsHelp(), {
+        await bot.sendMessage(chatId, withJoinFooter("No matching jobs found.\n\n" + resultsHelp()), {
           parse_mode: "HTML",
+          disable_web_page_preview: true,
           reply_markup: resultsKeyboard()
         });
         return;
       }
 
-      const message = "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n") + "\n\n────────\n" + resultsHelp();
+      const message = withJoinFooter(
+        "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n") + "\n\n────────\n" + resultsHelp()
+      );
       await bot.sendMessage(chatId, message, {
         parse_mode: "HTML",
         disable_web_page_preview: true,
@@ -224,7 +265,11 @@ export function registerCommandHandlers(bot: TelegramBot): void {
           }
         }
 
-        await bot.sendMessage(chatId, usage(), { parse_mode: "HTML", reply_markup: usageKeyboard() });
+        await bot.sendMessage(chatId, usage(), {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: usageKeyboard()
+        });
         return;
       }
 
@@ -237,25 +282,34 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       if (command === "/subscriptions") {
         await safeTrack({ event: "command", action: "/subscriptions", userId, chatId, chatType: msg.chat.type });
         const keywords = await listKeywords(userId);
-        const body =
+        const body = withJoinFooter(
           keywords.length === 0
             ? "No subscriptions yet. Use /subscribe &lt;keyword&gt;"
-            : "<b>Your subscriptions</b>\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n");
-        await bot.sendMessage(chatId, body, { parse_mode: "HTML" });
+            : "<b>Your subscriptions</b>\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n")
+        );
+        await bot.sendMessage(chatId, body, {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: withJoinKeyboard(undefined)
+        });
         return;
       }
 
       if (command === "/subscribe") {
         await safeTrack({ event: "command", action: "/subscribe", userId, chatId, chatType: msg.chat.type });
         if (!arg) {
-          await bot.sendMessage(chatId, "Usage: /subscribe <keyword>", { parse_mode: "HTML" });
+          await bot.sendMessage(chatId, withJoinFooter("Usage: /subscribe <keyword>"), {
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+            reply_markup: withJoinKeyboard(undefined)
+          });
           return;
         }
         const keywords = await addKeyword(userId, arg);
         await bot.sendMessage(
           chatId,
-          "Saved. Current subscriptions:\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n"),
-          { parse_mode: "HTML" }
+          withJoinFooter("Saved. Current subscriptions:\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n")),
+          { parse_mode: "HTML", disable_web_page_preview: true, reply_markup: withJoinKeyboard(undefined) }
         );
         return;
       }
@@ -263,16 +317,22 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       if (command === "/unsubscribe") {
         await safeTrack({ event: "command", action: "/unsubscribe", userId, chatId, chatType: msg.chat.type });
         if (!arg) {
-          await bot.sendMessage(chatId, "Usage: /unsubscribe <keyword>", { parse_mode: "HTML" });
+          await bot.sendMessage(chatId, withJoinFooter("Usage: /unsubscribe <keyword>"), {
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+            reply_markup: withJoinKeyboard(undefined)
+          });
           return;
         }
         const keywords = await removeKeyword(userId, arg);
         await bot.sendMessage(
           chatId,
-          keywords.length === 0
-            ? "Removed. You have no subscriptions."
-            : "Removed. Current subscriptions:\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n"),
-          { parse_mode: "HTML" }
+          withJoinFooter(
+            keywords.length === 0
+              ? "Removed. You have no subscriptions."
+              : "Removed. Current subscriptions:\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n")
+          ),
+          { parse_mode: "HTML", disable_web_page_preview: true, reply_markup: withJoinKeyboard(undefined) }
         );
         return;
       }
@@ -284,13 +344,19 @@ export function registerCommandHandlers(bot: TelegramBot): void {
           await safeTrack({ event: "search", action: "prompt", userId, chatId, chatType: msg.chat.type });
           await bot.sendMessage(
             chatId,
-            "Send me a keyword to search (example: <b>react</b>, <b>node</b>, <b>python</b>).\nType /cancel to stop.",
-            { parse_mode: "HTML" }
+            withJoinFooter(
+              "Send me a keyword to search (example: <b>react</b>, <b>node</b>, <b>python</b>).\nType /cancel to stop."
+            ),
+            { parse_mode: "HTML", disable_web_page_preview: true, reply_markup: withJoinKeyboard(undefined) }
           );
           return;
         }
 
-        await bot.sendMessage(chatId, `Searching for: <b>${escapeHtml(arg)}</b>`, { parse_mode: "HTML" });
+        await bot.sendMessage(chatId, withJoinFooter(`Searching for: <b>${escapeHtml(arg)}</b>`), {
+          parse_mode: "HTML",
+          disable_web_page_preview: true,
+          reply_markup: withJoinKeyboard(undefined)
+        });
 
         await safeTrack({
           event: "search",
@@ -303,14 +369,17 @@ export function registerCommandHandlers(bot: TelegramBot): void {
 
         const results = await searchJobsByKeyword(arg, 10);
         if (results.length === 0) {
-          await bot.sendMessage(chatId, "No matching jobs found.\n\n" + resultsHelp(), {
+          await bot.sendMessage(chatId, withJoinFooter("No matching jobs found.\n\n" + resultsHelp()), {
             parse_mode: "HTML",
+            disable_web_page_preview: true,
             reply_markup: resultsKeyboard()
           });
           return;
         }
 
-        const message = "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n") + "\n\n────────\n" + resultsHelp();
+        const message = withJoinFooter(
+          "<b>Results</b>\n\n" + results.map(formatJob).join("\n\n") + "\n\n────────\n" + resultsHelp()
+        );
         await bot.sendMessage(chatId, message, {
           parse_mode: "HTML",
           disable_web_page_preview: true,
@@ -322,12 +391,20 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       if (command === "/stats") {
         await safeTrack({ event: "command", action: "/stats", userId, chatId, chatType: msg.chat.type });
         if (!config.analyticsEnabled) {
-          await bot.sendMessage(chatId, "Analytics is disabled.", { parse_mode: "HTML" });
+          await bot.sendMessage(chatId, withJoinFooter("Analytics is disabled."), {
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+            reply_markup: withJoinKeyboard(undefined)
+          });
           return;
         }
 
         if (!config.analyticsAdminIds.includes(userId)) {
-          await bot.sendMessage(chatId, "Not allowed.", { parse_mode: "HTML" });
+          await bot.sendMessage(chatId, withJoinFooter("Not allowed."), {
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+            reply_markup: withJoinKeyboard(undefined)
+          });
           return;
         }
 
@@ -343,14 +420,26 @@ export function registerCommandHandlers(bot: TelegramBot): void {
             ? reportChatId === chatId
             : String(reportChatId) === String(chatId);
         if (!sameChat) {
-          await bot.sendMessage(chatId, "Posted analytics to the channel.", { parse_mode: "HTML" });
+          await bot.sendMessage(chatId, withJoinFooter("Posted analytics to the channel."), {
+            parse_mode: "HTML",
+            disable_web_page_preview: true,
+            reply_markup: withJoinKeyboard(undefined)
+          });
         }
         return;
       }
 
-      await bot.sendMessage(chatId, usage(), { parse_mode: "HTML", reply_markup: usageKeyboard() });
+      await bot.sendMessage(chatId, usage(), {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: usageKeyboard()
+      });
     } catch (e: any) {
-      await bot.sendMessage(chatId, `Error: ${escapeHtml(String(e?.message ?? e))}`, { parse_mode: "HTML" });
+      await bot.sendMessage(chatId, withJoinFooter(`Error: ${escapeHtml(String(e?.message ?? e))}`), {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+        reply_markup: withJoinKeyboard(undefined)
+      });
     }
   });
 }

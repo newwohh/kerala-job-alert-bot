@@ -1,4 +1,5 @@
 import TelegramBot from "node-telegram-bot-api";
+import { config } from "../config.js";
 import { AnalyticsSummary, getAnalyticsSummary } from "../db/analytics.js";
 
 function escapeHtml(input: string): string {
@@ -8,6 +9,25 @@ function escapeHtml(input: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function escapeHtmlAttr(input: string): string {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function joinFooterText(): string {
+  if (!config.groupUrl) return "";
+  const groupTitle = escapeHtml(config.groupTitle);
+  const groupUrl = escapeHtmlAttr(config.groupUrl);
+  return `\n\n────────\n<b>${groupTitle}</b>\n<a href="${groupUrl}">Join group</a>`;
+}
+
+function withJoinFooter(text: string): string {
+  return text + joinFooterText();
 }
 
 function formatTop(lines: Array<{ label: string; count: number }>, max: number): string {
@@ -57,6 +77,14 @@ export async function postAnalyticsSummary(
   since: Date
 ): Promise<void> {
   const summary = await getAnalyticsSummary(since);
-  const text = formatAnalyticsSummary(summary);
-  await bot.sendMessage(chatId, text, { parse_mode: "HTML", disable_web_page_preview: true });
+  const text = withJoinFooter(formatAnalyticsSummary(summary));
+
+  const inline_keyboard: TelegramBot.InlineKeyboardButton[][] = [];
+  if (config.groupUrl) inline_keyboard.push([{ text: config.groupTitle, url: config.groupUrl }]);
+
+  await bot.sendMessage(chatId, text, {
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: inline_keyboard.length ? { inline_keyboard } : undefined
+  });
 }

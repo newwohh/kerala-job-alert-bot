@@ -31,6 +31,24 @@ function escapeHtmlAttr(input: string): string {
     .replaceAll(">", "&gt;");
 }
 
+function joinFooterText(): string {
+  if (!config.groupUrl) return "";
+  const groupTitle = escapeHtml(config.groupTitle);
+  const groupUrl = escapeHtmlAttr(config.groupUrl);
+  return `\n\n────────\n<b>${groupTitle}</b>\n<a href="${groupUrl}">Join group</a>`;
+}
+
+function withJoinFooter(text: string): string {
+  return text + joinFooterText();
+}
+
+function withJoinKeyboard(markup?: TelegramBot.InlineKeyboardMarkup): TelegramBot.InlineKeyboardMarkup | undefined {
+  if (!config.groupUrl) return markup;
+  const joinRow: TelegramBot.InlineKeyboardButton[] = [{ text: config.groupTitle, url: config.groupUrl }];
+  if (!markup) return { inline_keyboard: [joinRow] };
+  return { inline_keyboard: [...markup.inline_keyboard, joinRow] };
+}
+
 async function safeTrack(event: Parameters<typeof trackEvent>[0]): Promise<void> {
   if (!config.analyticsEnabled) return;
   try {
@@ -107,7 +125,11 @@ async function showList(bot: TelegramBot, chatId: number | string, userId: numbe
       ? "You have no subscriptions yet."
       : "<b>Your subscriptions</b>\n" + keywords.map(k => `- ${escapeHtml(k)}`).join("\n");
 
-  await bot.sendMessage(chatId, text, { parse_mode: "HTML" });
+  await bot.sendMessage(chatId, withJoinFooter(text), {
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: withJoinKeyboard(undefined)
+  });
 }
 
 function formatJob(job: Job): string {
@@ -129,32 +151,42 @@ async function showSampleJobs(bot: TelegramBot, chatId: number | string, userId:
 
   const jobs = await findRecentJobsByKeywords(keywords, 5);
   if (jobs.length === 0) {
-    await bot.sendMessage(chatId, "No matching jobs found.", { parse_mode: "HTML" });
+    await bot.sendMessage(chatId, withJoinFooter("No matching jobs found."), {
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
+      reply_markup: withJoinKeyboard(undefined)
+    });
     return;
   }
 
-  const msg = "<b>Recent matching jobs</b>\n\n" + jobs.map(formatJob).join("\n\n");
-  await bot.sendMessage(chatId, msg, { parse_mode: "HTML", disable_web_page_preview: true });
+  const msg = withJoinFooter("<b>Recent matching jobs</b>\n\n" + jobs.map(formatJob).join("\n\n"));
+  await bot.sendMessage(chatId, msg, {
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: withJoinKeyboard(undefined)
+  });
 }
 
 export async function sendOnboarding(bot: TelegramBot, chatId: number | string, user: TelegramBot.User): Promise<void> {
   const text = await onboardingText(bot, user);
   const keyboard = await buildKeyboard(user.id);
 
-  await bot.sendMessage(chatId, text, {
+  await bot.sendMessage(chatId, withJoinFooter(text), {
     parse_mode: "HTML",
-    reply_markup: keyboard,
+    reply_markup: withJoinKeyboard(keyboard),
     disable_web_page_preview: true
   });
 }
 
 export async function sendWelcome(bot: TelegramBot, chatId: number | string, user: TelegramBot.User): Promise<void> {
   const text = await welcomeText(bot, user);
-  await bot.sendMessage(chatId, text, {
+  await bot.sendMessage(chatId, withJoinFooter(text), {
     parse_mode: "HTML",
     disable_web_page_preview: true,
     reply_markup: {
-      inline_keyboard: [[{ text: "Start", callback_data: `ob:start:${user.id}` }]]
+      inline_keyboard: withJoinKeyboard({
+        inline_keyboard: [[{ text: "Start", callback_data: `ob:start:${user.id}` }]]
+      })!.inline_keyboard
     }
   });
 }
@@ -204,11 +236,11 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
         if (query.message?.chat && typeof query.message.message_id === "number") {
           const text = await onboardingText(bot, query.from);
           const keyboard = await buildKeyboard(userId);
-          await bot.editMessageText(text, {
+          await bot.editMessageText(withJoinFooter(text), {
             chat_id: query.message.chat.id,
             message_id: query.message.message_id,
             parse_mode: "HTML",
-            reply_markup: keyboard,
+            reply_markup: withJoinKeyboard(keyboard),
             disable_web_page_preview: true
           });
         } else {
@@ -226,14 +258,20 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
         try {
           await showSampleJobs(bot, userId, userId);
           if (chatId !== userId) {
-            await bot.sendMessage(chatId, "Sent you sample matching jobs in DM.", { parse_mode: "HTML" });
+            await bot.sendMessage(chatId, withJoinFooter("Sent you sample matching jobs in DM."), {
+              parse_mode: "HTML",
+              disable_web_page_preview: true,
+              reply_markup: withJoinKeyboard(undefined)
+            });
           }
         } catch {
           if (chatId !== userId) {
             await bot.sendMessage(
               chatId,
-              "I couldn't DM you. Please open the bot in private chat and press Start once, then click Done again.",
-              { parse_mode: "HTML" }
+              withJoinFooter(
+                "I couldn't DM you. Please open the bot in private chat and press Start once, then click Done again."
+              ),
+              { parse_mode: "HTML", disable_web_page_preview: true, reply_markup: withJoinKeyboard(undefined) }
             );
           }
         }
@@ -269,11 +307,11 @@ export function registerOnboardingHandlers(bot: TelegramBot): void {
         if (query.message?.chat && typeof query.message.message_id === "number") {
           const text = await onboardingText(bot, query.from);
           const keyboard = await buildKeyboard(userId);
-          await bot.editMessageText(text, {
+          await bot.editMessageText(withJoinFooter(text), {
             chat_id: query.message.chat.id,
             message_id: query.message.message_id,
             parse_mode: "HTML",
-            reply_markup: keyboard,
+            reply_markup: withJoinKeyboard(keyboard),
             disable_web_page_preview: true
           });
         }

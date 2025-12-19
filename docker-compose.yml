@@ -1,0 +1,23 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DB:-job_alerts}
+    volumes:
+      - mongo_data:/data/db
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+    environment:
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+
+volumes:
+  mongo_data:
