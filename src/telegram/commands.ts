@@ -298,7 +298,7 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       if (command === "/subscribe") {
         await safeTrack({ event: "command", action: "/subscribe", userId, chatId, chatType: msg.chat.type });
         if (!arg) {
-          await bot.sendMessage(chatId, withJoinFooter("Usage: /subscribe <keyword>"), {
+          await bot.sendMessage(chatId, withJoinFooter("Usage: /subscribe <code>keyword</code>"), {
             parse_mode: "HTML",
             disable_web_page_preview: true,
             reply_markup: withJoinKeyboard(undefined)
@@ -317,7 +317,7 @@ export function registerCommandHandlers(bot: TelegramBot): void {
       if (command === "/unsubscribe") {
         await safeTrack({ event: "command", action: "/unsubscribe", userId, chatId, chatType: msg.chat.type });
         if (!arg) {
-          await bot.sendMessage(chatId, withJoinFooter("Usage: /unsubscribe <keyword>"), {
+          await bot.sendMessage(chatId, withJoinFooter("Usage: /unsubscribe <code>keyword</code>"), {
             parse_mode: "HTML",
             disable_web_page_preview: true,
             reply_markup: withJoinKeyboard(undefined)

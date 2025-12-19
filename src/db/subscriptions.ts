@@ -30,7 +30,7 @@ export async function addKeyword(chatId: number, keyword: string): Promise<strin
     .updateOne(
       { chatId },
       {
-        $setOnInsert: { chatId, createdAt: now, keywords: [] },
+        $setOnInsert: { chatId, createdAt: now },
         $set: { updatedAt: now },
         $addToSet: { keywords: normalized }
       },
