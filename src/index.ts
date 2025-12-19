@@ -10,6 +10,18 @@ import { registerOnboardingHandlers } from "./telegram/onboarding.js";
 import { bot, startBotPolling } from "./telegram/bot.js";
 import { log } from "./utils/logger.js";
 
+process.on("unhandledRejection", err => {
+  // eslint-disable-next-line no-console
+  console.error("Unhandled rejection:", err);
+  process.exit(1);
+});
+
+process.on("uncaughtException", err => {
+  // eslint-disable-next-line no-console
+  console.error("Uncaught exception:", err);
+  process.exit(1);
+});
+
 function startHealthServer(): void {
   const portRaw = process.env.PORT;
   if (!portRaw) return;
