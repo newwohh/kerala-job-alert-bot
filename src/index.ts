@@ -1,5 +1,6 @@
 
 import cron from "node-cron";
+import { createServer } from "node:http";
 import { config } from "./config.js";
 import { connectMongo } from "./db/mongo.js";
 import { postAnalyticsSummary } from "./analytics/report.js";
@@ -9,7 +10,32 @@ import { registerOnboardingHandlers } from "./telegram/onboarding.js";
 import { bot } from "./telegram/bot.js";
 import { log } from "./utils/logger.js";
 
+function startHealthServer(): void {
+  const portRaw = process.env.PORT;
+  if (!portRaw) return;
+  const port = Number(portRaw);
+  if (!Number.isFinite(port) || port <= 0) return;
+
+  const server = createServer((req, res) => {
+    const url = req.url ?? "/";
+    if (url === "/" || url.startsWith("/healthz")) {
+      res.statusCode = 200;
+      res.setHeader("content-type", "text/plain; charset=utf-8");
+      res.end("ok");
+      return;
+    }
+    res.statusCode = 404;
+    res.setHeader("content-type", "text/plain; charset=utf-8");
+    res.end("not found");
+  });
+
+  server.listen(port, "0.0.0.0", () => {
+    log("Health server listening on:", String(port));
+  });
+}
+
 async function start(): Promise<void> {
+  startHealthServer();
   await connectMongo();
   // logs starting message
   log("Job Alert Bot running");
