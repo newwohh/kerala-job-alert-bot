@@ -21,13 +21,14 @@ function isConflict409(err: unknown): boolean {
 }
 
 function schedulePollingRestart(reason: string, err: unknown): void {
-  if (isConflict409(err)) {
+  const conflict409 = isConflict409(err);
+  if (conflict409) {
     // eslint-disable-next-line no-console
     console.error(
-      "Polling conflict (409). Another instance is likely running with the same BOT_TOKEN. Stop other instances.",
+      "Polling conflict (409). Another instance is likely running with the same BOT_TOKEN. Will retry polling.",
       err
     );
-    return;
+    backoffMs = Math.max(backoffMs, 10_000);
   }
 
   if (restarting) return;

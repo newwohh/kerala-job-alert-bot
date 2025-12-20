@@ -8,18 +8,16 @@ import { runJobs } from "./jobs/runner.js";
 import { registerCommandHandlers } from "./telegram/commands.js";
 import { registerOnboardingHandlers } from "./telegram/onboarding.js";
 import { bot, startBotPolling } from "./telegram/bot.js";
-import { log } from "./utils/logger.js";
+import { error, log } from "./utils/logger.js";
 
 process.on("unhandledRejection", err => {
-  // eslint-disable-next-line no-console
-  console.error("Unhandled rejection:", err);
-  process.exit(1);
+  error("Unhandled rejection:", err);
+  process.exitCode = 1;
 });
 
 process.on("uncaughtException", err => {
-  // eslint-disable-next-line no-console
-  console.error("Uncaught exception:", err);
-  process.exit(1);
+  error("Uncaught exception:", err);
+  process.exitCode = 1;
 });
 
 function startHealthServer(): void {
@@ -78,7 +76,9 @@ async function start(): Promise<void> {
   }
 
   if (config.cronEnabled) {
-    cron.schedule(config.cron, runJobs);
+    cron.schedule(config.cron, () => {
+      void runJobs().catch(e => error("Scheduled job run failed:", e));
+    });
     log("Cron enabled:", config.cron);
   } else {
     log("Cron disabled: no automatic job posting");
@@ -86,9 +86,9 @@ async function start(): Promise<void> {
 
   if (config.analyticsEnabled) {
     const reportChatId = config.analyticsChatId || config.channelId;
-    cron.schedule(config.analyticsCron, async () => {
+    cron.schedule(config.analyticsCron, () => {
       const since = new Date(Date.now() - config.analyticsWindowHours * 60 * 60 * 1000);
-      await postAnalyticsSummary(bot, reportChatId, since);
+      void postAnalyticsSummary(bot, reportChatId, since).catch(e => error("Analytics job failed:", e));
     });
     log("Analytics enabled:", config.analyticsCron);
   }
