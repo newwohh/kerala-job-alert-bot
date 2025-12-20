@@ -47,10 +47,22 @@ function withJoinFooter(text: string): string {
 }
 
 function withJoinKeyboard(markup?: TelegramBot.InlineKeyboardMarkup): TelegramBot.InlineKeyboardMarkup | undefined {
-  if (!config.groupUrl) return markup;
-  const joinRow: TelegramBot.InlineKeyboardButton[] = [{ text: config.groupTitle, url: config.groupUrl }];
-  if (!markup) return { inline_keyboard: [joinRow] };
-  return { inline_keyboard: [...markup.inline_keyboard, joinRow] };
+  const inline_keyboard = markup ? [...markup.inline_keyboard.map(r => [...r])] : [];
+
+  const hasSearch = inline_keyboard.some(row =>
+    row.some(btn => (btn as any)?.callback_data === "cmd:search")
+  );
+  const hasJoin =
+    !!config.groupUrl &&
+    inline_keyboard.some(row => row.some(btn => (btn as any)?.url === config.groupUrl));
+
+  const footerRow: TelegramBot.InlineKeyboardButton[] = [];
+  if (config.groupUrl && !hasJoin) footerRow.push({ text: config.groupTitle, url: config.groupUrl });
+  if (!hasSearch) footerRow.push({ text: "🔎 Search", callback_data: "cmd:search" });
+
+  if (footerRow.length === 0) return markup;
+  inline_keyboard.push(footerRow);
+  return { inline_keyboard };
 }
 
 function usage(): string {
