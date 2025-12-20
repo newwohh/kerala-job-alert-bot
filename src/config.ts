@@ -1,28 +1,6 @@
 
 import "dotenv/config";
-
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
-}
-
-function numberFromEnv(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const n = Number(raw);
-  if (!Number.isFinite(n)) throw new Error(`Invalid number env: ${name}`);
-  return n;
-}
-
-function booleanFromEnv(name: string, fallback: boolean): boolean {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const normalized = raw.trim().toLowerCase();
-  if (["1", "true", "yes", "y", "on"].includes(normalized)) return true;
-  if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
-  throw new Error(`Invalid boolean env: ${name}`);
-}
+import { envBoolean, envNumber, envsafe, envString } from "@newwohh/env-safe";
 
 function numberListFromEnv(name: string): number[] {
   const raw = (process.env[name] ?? "").trim();
@@ -33,27 +11,29 @@ function numberListFromEnv(name: string): number[] {
     .filter(n => Number.isFinite(n));
 }
 
+envsafe(["BOT_TOKEN", "CHANNEL_ID", "MONGODB_URI"]);
+
 export const config = {
-  botToken: required("BOT_TOKEN"),
-  channelId: required("CHANNEL_ID"),
-  mongoUri: required("MONGODB_URI"),
-  mongoDb: process.env.MONGODB_DB ?? "job_alerts",
-  cron: process.env.CRON_SCHEDULE ?? "*/20 * * * *",
-  cronEnabled: booleanFromEnv("CRON_ENABLED", true),
-  analyticsEnabled: booleanFromEnv("ANALYTICS_ENABLED", false),
-  analyticsCron: process.env.ANALYTICS_CRON ?? "0 9 * * *",
-  analyticsWindowHours: numberFromEnv("ANALYTICS_WINDOW_HOURS", 24),
-  analyticsChatId: process.env.ANALYTICS_CHAT_ID ?? "",
+  botToken: envString("BOT_TOKEN"),
+  channelId: envString("CHANNEL_ID"),
+  mongoUri: envString("MONGODB_URI"),
+  mongoDb: envString("MONGODB_DB", { default: "job_alerts" }),
+  cron: envString("CRON_SCHEDULE", { default: "*/20 * * * *" }),
+  cronEnabled: envBoolean("CRON_ENABLED", { default: true, truthy: ["1", "true", "yes", "y", "on"], falsy: ["0", "false", "no", "n", "off"] }),
+  analyticsEnabled: envBoolean("ANALYTICS_ENABLED", { default: false, truthy: ["1", "true", "yes", "y", "on"], falsy: ["0", "false", "no", "n", "off"] }),
+  analyticsCron: envString("ANALYTICS_CRON", { default: "0 9 * * *" }),
+  analyticsWindowHours: envNumber("ANALYTICS_WINDOW_HOURS", { default: 24 }),
+  analyticsChatId: envString("ANALYTICS_CHAT_ID", { default: "" }),
   analyticsAdminIds: numberListFromEnv("ANALYTICS_ADMIN_IDS"),
-  requestTimeoutMs: numberFromEnv("REQUEST_TIMEOUT_MS", 15000),
-  maxPages: numberFromEnv("MAX_PAGES", 3),
-  infosysEnabled: booleanFromEnv("INFOSYS_ENABLED", false),
-  infosysKeyword: process.env.INFOSYS_KEYWORD ?? "",
-  groupTitle: process.env.GROUP_TITLE ?? "Join Kerala Jobs Alerts",
-  groupUrl: process.env.GROUP_URL ?? "https://t.me/joinkeralajobsalerts",
-  promoText: process.env.PROMO_TEXT ?? "",
-  promoUrl: process.env.PROMO_URL ?? "",
-  promoButtonText: process.env.PROMO_BUTTON_TEXT ?? "Learn more",
-  runJobsOnStartup: booleanFromEnv("RUN_JOBS_ON_STARTUP", false),
-  onboardingChatId: process.env.ONBOARDING_CHAT_ID ?? ""
+  requestTimeoutMs: envNumber("REQUEST_TIMEOUT_MS", { default: 15000 }),
+  maxPages: envNumber("MAX_PAGES", { default: 3 }),
+  infosysEnabled: envBoolean("INFOSYS_ENABLED", { default: false, truthy: ["1", "true", "yes", "y", "on"], falsy: ["0", "false", "no", "n", "off"] }),
+  infosysKeyword: envString("INFOSYS_KEYWORD", { default: "" }),
+  groupTitle: envString("GROUP_TITLE", { default: "Join Kerala Jobs Alerts" }),
+  groupUrl: envString("GROUP_URL", { default: "https://t.me/joinkeralajobsalerts" }),
+  promoText: envString("PROMO_TEXT", { default: "" }),
+  promoUrl: envString("PROMO_URL", { default: "" }),
+  promoButtonText: envString("PROMO_BUTTON_TEXT", { default: "Learn more" }),
+  runJobsOnStartup: envBoolean("RUN_JOBS_ON_STARTUP", { default: false, truthy: ["1", "true", "yes", "y", "on"], falsy: ["0", "false", "no", "n", "off"] }),
+  onboardingChatId: envString("ONBOARDING_CHAT_ID", { default: "" })
 };

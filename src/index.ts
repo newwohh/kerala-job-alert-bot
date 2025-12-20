@@ -2,6 +2,7 @@
 import cron from "node-cron";
 import { createServer } from "node:http";
 import { config } from "./config.js";
+import { envNumber } from "@newwohh/env-safe";
 import { connectMongo } from "./db/mongo.js";
 import { postAnalyticsSummary } from "./analytics/report.js";
 import { runJobs } from "./jobs/runner.js";
@@ -21,10 +22,8 @@ process.on("uncaughtException", err => {
 });
 
 function startHealthServer(): void {
-  const portRaw = process.env.PORT;
-  if (!portRaw) return;
-  const port = Number(portRaw);
-  if (!Number.isFinite(port) || port <= 0) return;
+  const port = envNumber("PORT", { default: 0, integer: true, min: 0 });
+  if (port <= 0) return;
 
   const server = createServer((req, res) => {
     const url = req.url ?? "/";
