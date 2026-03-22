@@ -2,6 +2,10 @@
   "name": "job-alert-bot",
   "private": true,
   "type": "module",
+  "author": {
+    "name": "Nevin Raju",
+    "url": "https://github.com/newwohh"
+  },
   "scripts": {
     "dev": "node --loader ts-node/esm src/index.ts",
     "build": "tsc",
