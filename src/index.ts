@@ -2,7 +2,7 @@ console.log("Running jobs alerts...");
 
 // start the app
 
-// connect DB
+// connect DB using prisma
 
 // connect the bot
 
