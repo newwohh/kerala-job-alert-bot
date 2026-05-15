@@ -1,8 +1,6 @@
 
 import cron from "node-cron";
-import { createServer } from "node:http";
 import { config } from "./config.js";
-import { envNumber } from "@newwohh/env-safe";
 import { connectMongo } from "./db/mongo.js";
 import { postAnalyticsSummary } from "./analytics/report.js";
 import { runJobs } from "./jobs/runner.js";
@@ -10,38 +8,12 @@ import { registerCommandHandlers } from "./telegram/commands.js";
 import { registerOnboardingHandlers } from "./telegram/onboarding.js";
 import { bot, startBotPolling } from "./telegram/bot.js";
 import { error, log } from "./utils/logger.js";
+import { startHealthServer } from "./utils/health-server.js";
+import { setupGlobalErrorHandlers } from "./utils/globalErrorHandler.js";
 
-process.on("unhandledRejection", err => {
-  error("Unhandled rejection:", err);
-  process.exitCode = 1;
-});
-
-process.on("uncaughtException", err => {
-  error("Uncaught exception:", err);
-  process.exitCode = 1;
-});
-
-function startHealthServer(): void {
-  const port = envNumber("PORT", { default: 0, integer: true, min: 0 });
-  if (port <= 0) return;
-
-  const server = createServer((req, res) => {
-    const url = req.url ?? "/";
-    if (url === "/" || url.startsWith("/healthz")) {
-      res.statusCode = 200;
-      res.setHeader("content-type", "text/plain; charset=utf-8");
-      res.end("ok");
-      return;
-    }
-    res.statusCode = 404;
-    res.setHeader("content-type", "text/plain; charset=utf-8");
-    res.end("not found");
-  });
-
-  server.listen(port, "0.0.0.0", () => {
-    log("Health server listening on:", String(port));
-  });
-}
+// handle uncaught exceptions and unhandled 
+// promise rejections to prevent silent crashes
+setupGlobalErrorHandlers();
 
 async function start(): Promise<void> {
   startHealthServer();
