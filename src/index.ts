@@ -12,7 +12,7 @@ import { startHealthServer } from "./utils/health-server.js";
 import { setupGlobalErrorHandlers } from "./utils/globalErrorHandler.js";
 
 // handle uncaught exceptions and unhandled 
-// promise rejections to prevent silent crashes
+// promise rejections to prevent silent crashes and to log them properly
 setupGlobalErrorHandlers();
 
 async function start(): Promise<void> {
