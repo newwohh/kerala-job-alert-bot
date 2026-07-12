@@ -1,9 +1,7 @@
 
-import cron from "node-cron";
-import { config } from "./config.js";
 import { connectMongo } from "./db/mongo.js";
-import { postAnalyticsSummary } from "./analytics/report.js";
-import { runJobs } from "./jobs/runner.js";
+import { postOnboardingAnnouncement } from "./startup/announcement.js";
+import { runStartupJobs, scheduleRecurringTasks } from "./startup/scheduler.js";
 import { registerCommandHandlers } from "./telegram/commands.js";
 import { registerOnboardingHandlers } from "./telegram/onboarding.js";
 import { bot, startBotPolling } from "./telegram/bot.js";
@@ -11,62 +9,30 @@ import { error, log } from "./utils/logger.js";
 import { startHealthServer } from "./utils/health-server.js";
 import { setupGlobalErrorHandlers } from "./utils/globalErrorHandler.js";
 
-// handle uncaught exceptions and unhandled 
-// promise rejections to prevent silent crashes and to log them properly
 setupGlobalErrorHandlers();
 
 async function start(): Promise<void> {
+  // 1. Start the optional HTTP endpoint used by hosting platforms.
   startHealthServer();
+
+  // 2. Connect before any feature tries to read or write MongoDB.
   await connectMongo();
-  // logs starting message
   log("Job Alert Bot running");
 
-
+  // 3. Register Telegram behavior before polling for new updates.
   registerCommandHandlers(bot);
   registerOnboardingHandlers(bot);
   await startBotPolling();
 
-  if (config.onboardingChatId) {
-    const me = await bot.getMe();
-    const deepLink = me.username ? `https://t.me/${me.username}?start=onboard` : "";
-    const msg =
-      "<b>Job Alerts Bot is online</b>\n\n" +
-      "Type /start in this group to choose your job keywords.\n" +
-      (deepLink
-        ? `For DM alerts, open the bot privately once:\n<a href=\"${deepLink}\">Start bot</a>`
-        : "For DM alerts, open the bot in private chat and press Start once.");
+  // 4. Run optional startup tasks.
+  await postOnboardingAnnouncement();
+  await runStartupJobs();
 
-    await bot.sendMessage(config.onboardingChatId, msg, {
-      parse_mode: "HTML",
-      disable_web_page_preview: true
-    });
-  }
-
-  if (config.runJobsOnStartup) {
-    await runJobs();
-  }
-
-  if (config.cronEnabled) {
-    cron.schedule(config.cron, () => {
-      void runJobs().catch(e => error("Scheduled job run failed:", e));
-    });
-    log("Cron enabled:", config.cron);
-  } else {
-    log("Cron disabled: no automatic job posting");
-  }
-
-  if (config.analyticsEnabled) {
-    const reportChatId = config.analyticsChatId || config.channelId;
-    cron.schedule(config.analyticsCron, () => {
-      const since = new Date(Date.now() - config.analyticsWindowHours * 60 * 60 * 1000);
-      void postAnalyticsSummary(bot, reportChatId, since).catch(e => error("Analytics job failed:", e));
-    });
-    log("Analytics enabled:", config.analyticsCron);
-  }
+  // 5. Schedule recurring work.
+  scheduleRecurringTasks();
 }
 
-start().catch(err => {
-  // eslint-disable-next-line no-console
-  console.error("Fatal error:", err);
+void start().catch(err => {
+  error("Fatal error:", err);
   process.exit(1);
 });
