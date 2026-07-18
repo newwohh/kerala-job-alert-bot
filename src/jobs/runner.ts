@@ -1,5 +1,6 @@
 import { fetchInfopark } from "../scrapers/infopark.js";
-import { fetchInfosys } from "../scrapers/infosys.js";
+// Infosys paused: scraper bypasses the site's bot protection (spoofed UA), likely ToS violation
+// import { fetchInfosys } from "../scrapers/infosys.js";
 import { fetchTechnopark } from "../scrapers/technopark.js";
 import { trySave } from "../db/jobs.js";
 import { post } from "../telegram/bot.js";
@@ -15,9 +16,9 @@ const sources: Array<{ name: string; fetch: Fetcher }> = [
   { name: "Technopark", fetch: fetchTechnopark }
 ];
 
-if (config.infosysEnabled) {
-  sources.push({ name: "Infosys", fetch: fetchInfosys });
-}
+// if (config.infosysEnabled) {
+//   sources.push({ name: "Infosys", fetch: fetchInfosys });
+// }
 
 export async function runJobs(): Promise<void> {
   for (const source of sources) {
