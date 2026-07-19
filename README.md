@@ -59,11 +59,6 @@ Copy `.env.example` to `.env` and fill values.
 - `REQUEST_TIMEOUT_MS` — Default: `15000`
 - `ONBOARDING_CHAT_ID` — If set, posts a "bot online" message on startup
 
-### Source toggles
-
-- `INFOSYS_ENABLED` — Default: `false`
-- `INFOSYS_KEYWORD` — Optional keyword filter for Infosys scraper
-
 ### Post footer / promotion
 
 - `GROUP_TITLE` — Text for group button/title

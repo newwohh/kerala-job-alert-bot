@@ -6,18 +6,10 @@ import { trackEvent } from "../db/analytics.js";
 import { postAnalyticsSummary } from "../analytics/report.js";
 import { sendOnboarding } from "./onboarding.js";
 import { Job } from "../types/job.js";
+import { escapeHtml, escapeHtmlAttr, joinFooterText, withJoinFooter, withJoinKeyboard } from "./ui.js";
 
 const pendingSearch = new Map<number, { chatId: number | string; expiresAt: number }>();
 const PENDING_SEARCH_TTL_MS = 2 * 60 * 1000;
-
-function escapeHtml(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 async function safeTrack(event: Parameters<typeof trackEvent>[0]): Promise<void> {
   if (!config.analyticsEnabled) return;
@@ -25,44 +17,6 @@ async function safeTrack(event: Parameters<typeof trackEvent>[0]): Promise<void>
     await trackEvent(event);
   } catch {
   }
-}
-
-function escapeHtmlAttr(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-function joinFooterText(): string {
-  if (!config.groupUrl) return "";
-  const groupTitle = escapeHtml(config.groupTitle);
-  const groupUrl = escapeHtmlAttr(config.groupUrl);
-  return `\n\n────────\n<b>${groupTitle}</b>\n<a href="${groupUrl}">Join group</a>`;
-}
-
-function withJoinFooter(text: string): string {
-  return text + joinFooterText();
-}
-
-function withJoinKeyboard(markup?: TelegramBot.InlineKeyboardMarkup): TelegramBot.InlineKeyboardMarkup | undefined {
-  const inline_keyboard = markup ? [...markup.inline_keyboard.map(r => [...r])] : [];
-
-  const hasSearch = inline_keyboard.some(row =>
-    row.some(btn => (btn as any)?.callback_data === "cmd:search")
-  );
-  const hasJoin =
-    !!config.groupUrl &&
-    inline_keyboard.some(row => row.some(btn => (btn as any)?.url === config.groupUrl));
-
-  const footerRow: TelegramBot.InlineKeyboardButton[] = [];
-  if (config.groupUrl && !hasJoin) footerRow.push({ text: config.groupTitle, url: config.groupUrl });
-  if (!hasSearch) footerRow.push({ text: "🔎 Search", callback_data: "cmd:search" });
-
-  if (footerRow.length === 0) return markup;
-  inline_keyboard.push(footerRow);
-  return { inline_keyboard };
 }
 
 function usage(): string {

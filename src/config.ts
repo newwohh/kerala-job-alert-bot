@@ -27,8 +27,6 @@ export const config = {
   analyticsAdminIds: numberListFromEnv("ANALYTICS_ADMIN_IDS"),
   requestTimeoutMs: envNumber("REQUEST_TIMEOUT_MS", { default: 15000 }),
   maxPages: envNumber("MAX_PAGES", { default: 3 }),
-  infosysEnabled: envBoolean("INFOSYS_ENABLED", { default: false, truthy: ["1", "true", "yes", "y", "on"], falsy: ["0", "false", "no", "n", "off"] }),
-  infosysKeyword: envString("INFOSYS_KEYWORD", { default: "" }),
   groupTitle: envString("GROUP_TITLE", { default: "Join Kerala Jobs Alerts" }),
   groupUrl: envString("GROUP_URL", { default: "https://t.me/joinkeralajobsalerts" }),
   promoText: envString("PROMO_TEXT", { default: "" }),

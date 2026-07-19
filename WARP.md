@@ -3,7 +3,7 @@
 This file provides guidance to WARP (warp.dev) when working with code in this repository.
 
 ## Project Overview
-This is a Telegram bot that scrapes job postings from multiple sources (Infopark, Technopark, and optionally Infosys) and posts them to a Telegram channel. Users can subscribe to keyword-based alerts and search the job database via DMs.
+This is a Telegram bot that scrapes job postings from Infopark and Technopark and posts them to a Telegram channel. Users can subscribe to keyword-based alerts and search the job database via DMs.
 
 ## Development Commands
 
@@ -37,7 +37,7 @@ The application requires MongoDB to be running. It creates these collections:
 
 ### Core Flow
 1. **Job Runner** (`src/jobs/runner.ts`): Orchestrates the scraping cycle
-   - Iterates through enabled scrapers (Infopark, Technopark, Infosys)
+   - Iterates through the Infopark and Technopark scrapers
    - Fetches jobs and deduplicates using MongoDB
    - Posts new jobs to the main channel
    - Notifies subscribed users whose keywords match
@@ -45,7 +45,7 @@ The application requires MongoDB to be running. It creates these collections:
 2. **Scrapers** (`src/scrapers/`): Extract job listings from external sources
    - Each scraper returns an array of `Job` objects with normalized structure
    - Use Cheerio for HTML parsing (Infopark, Technopark)
-   - Infosys scraper handles session-based authentication
+   - Each scraper uses retry logic for transient request failures
    - All scrapers use the retry utility for resilience
 
 3. **Telegram Bot** (`src/telegram/`):

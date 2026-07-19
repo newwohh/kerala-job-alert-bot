@@ -4,6 +4,7 @@ import { addKeyword, listKeywords, removeKeyword } from "../db/subscriptions.js"
 import { findRecentJobsByKeywords } from "../db/jobsSearch.js";
 import { trackEvent } from "../db/analytics.js";
 import { Job } from "../types/job.js";
+import { escapeHtml, escapeHtmlAttr, withJoinFooter, withJoinKeyboard } from "./ui.js";
 
 const KEYWORDS: Array<{ label: string; value: string }> = [
   { label: "React", value: "react" },
@@ -13,53 +14,6 @@ const KEYWORDS: Array<{ label: string; value: string }> = [
   { label: "Flutter", value: "flutter" },
   { label: "QA", value: "qa" }
 ];
-
-function escapeHtml(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function escapeHtmlAttr(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-function joinFooterText(): string {
-  if (!config.groupUrl) return "";
-  const groupTitle = escapeHtml(config.groupTitle);
-  const groupUrl = escapeHtmlAttr(config.groupUrl);
-  return `\n\n────────\n<b>${groupTitle}</b>\n<a href="${groupUrl}">Join group</a>`;
-}
-
-function withJoinFooter(text: string): string {
-  return text + joinFooterText();
-}
-
-function withJoinKeyboard(markup?: TelegramBot.InlineKeyboardMarkup): TelegramBot.InlineKeyboardMarkup | undefined {
-  const inline_keyboard = markup ? [...markup.inline_keyboard.map(r => [...r])] : [];
-
-  const hasSearch = inline_keyboard.some(row =>
-    row.some(btn => (btn as any)?.callback_data === "cmd:search")
-  );
-  const hasJoin =
-    !!config.groupUrl &&
-    inline_keyboard.some(row => row.some(btn => (btn as any)?.url === config.groupUrl));
-
-  const footerRow: TelegramBot.InlineKeyboardButton[] = [];
-  if (config.groupUrl && !hasJoin) footerRow.push({ text: config.groupTitle, url: config.groupUrl });
-  if (!hasSearch) footerRow.push({ text: "🔎 Search", callback_data: "cmd:search" });
-
-  if (footerRow.length === 0) return markup;
-  inline_keyboard.push(footerRow);
-  return { inline_keyboard };
-}
 
 async function safeTrack(event: Parameters<typeof trackEvent>[0]): Promise<void> {
   if (!config.analyticsEnabled) return;

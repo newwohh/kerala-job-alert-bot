@@ -1,6 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { config } from "../config.js";
 import { Job } from "../types/job.js";
+import { escapeHtml, escapeHtmlAttr } from "./ui.js";
 
 export const bot = new TelegramBot(config.botToken, {
   polling: { autoStart: false }
@@ -83,23 +84,6 @@ export async function startBotPolling(): Promise<void> {
   if (!bot.isPolling()) {
     bot.startPolling();
   }
-}
-
-function escapeHtml(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function escapeHtmlAttr(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
 }
 
 export async function post(job: Job): Promise<void> {
