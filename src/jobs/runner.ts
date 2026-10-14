@@ -1,6 +1,6 @@
 import { fetchInfopark } from "../scrapers/infopark.js";
 import { fetchTechnopark } from "../scrapers/technopark.js";
-import { trySave } from "../db/jobs.js";
+import { removeJob, trySave } from "../db/jobs.js";
 import { post } from "../telegram/bot.js";
 import { Job } from "../types/job.js";
 import { notifySubscribers } from "./notify.js";
@@ -12,6 +12,10 @@ const sources: Array<{ name: string; fetch: Fetcher }> = [
   { name: "Infopark", fetch: fetchInfopark },
   { name: "Technopark", fetch: fetchTechnopark }
 ];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 export async function runJobs(): Promise<void> {
   for (const source of sources) {
@@ -29,10 +33,33 @@ export async function runJobs(): Promise<void> {
           continue;
         }
 
-        await post(job);
-        await notifySubscribers(job);
-        postedCount++;
-        log("Posted:", job.title);
+        try {
+          await post(job);
+          await notifySubscribers(job);
+          postedCount++;
+          log("Posted:", job.title);
+        } catch (err: any) {
+          const retryAfter = err?.response?.parameters?.retry_after ?? err?.parameters?.retry_after;
+          if (retryAfter) {
+            log(`Rate limited by Telegram. Waiting ${retryAfter}s before retrying...`);
+            await sleep((retryAfter + 1) * 1000);
+            try {
+              await post(job);
+              await notifySubscribers(job);
+              postedCount++;
+              log("Posted (after retry):", job.title);
+            } catch (retryErr) {
+              error("Failed to post after 429 wait:", job.title, retryErr);
+              await removeJob(job.link);
+            }
+          } else {
+            error("Failed to post job:", job.title, err?.message ?? err);
+            await removeJob(job.link);
+          }
+        }
+
+        // Throttle to respect Telegram rate limits (1 msg per 1.5s)
+        await sleep(1500);
       }
 
       log("Summary:", source.name, { posted: postedCount, duplicates: duplicateCount });
@@ -41,3 +68,4 @@ export async function runJobs(): Promise<void> {
     }
   }
 }
+

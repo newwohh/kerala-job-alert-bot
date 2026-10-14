@@ -13,3 +13,8 @@ export async function trySave(job: Job): Promise<boolean> {
     throw e;
   }
 }
+
+export async function removeJob(link: string): Promise<void> {
+  await getDb().collection("jobs").deleteOne({ link });
+}
+
