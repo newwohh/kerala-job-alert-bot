@@ -35,6 +35,44 @@
 - Always HTML-escape any dynamic content (job fields, user-provided keywords, errors).
 - Any URL embedded in an HTML attribute must be attribute-escaped.
 
+## Rate limiting & posting resilience
+- Telegram rate limits message bursts to channels/groups (~20-30 msgs/min, 1 msg/sec).
+- `src/jobs/runner.ts` enforces a 1500ms sleep between consecutive job posts.
+- If Telegram returns HTTP 429 Too Many Requests, runner extracts `retry_after`, sleeps, and retries.
+- If a post ultimately fails, `removeJob(job.link)` rolls back the MongoDB insert so the job can be re-attempted on the next scrape cycle instead of being permanently dropped.
+
+## Deployment & Hosting (DigitalOcean App Platform)
+- Production branch is `master` (DO App Platform deploys on push to `master`).
+- Container runtime: multi-stage build via `Dockerfile` (Node 22 Alpine).
+- Web service health probe:
+  - DO App Platform routes HTTP traffic to `PORT` (default `8080`).
+  - `startHealthServer()` in `src/utils/health-server.ts` listens on `PORT` and responds `200 ok` to `/` and `/healthz`.
+  - Without `PORT` responding `200`, App Platform readiness probes fail (`DeployContainerExitNonZero`).
+- Rolling deploys & Telegram 409 conflicts:
+  - During rolling deploys, old and new containers briefly overlap.
+  - The new container will catch a temporary `409 Conflict: terminated by other getUpdates request`.
+  - `src/telegram/bot.ts` handles 409 errors with backoff and automatic polling restart once the old container exits.
+- App Platform Environment Variables:
+  - Required: `BOT_TOKEN` (secret), `CHANNEL_ID`, `MONGODB_URI` (secret).
+  - Recommended: `PORT=8080`, `RUN_JOBS_ON_STARTUP=true`, `MONGODB_DB=job_alerts`, `CRON_SCHEDULE=*/20 * * * *`.
+
+## MCP (Model Context Protocol) Integration
+- DigitalOcean MCP Server (`@digitalocean/mcp`) is configured in `~/.gemini/config/mcp_config.json`:
+  ```json
+  {
+    "mcpServers": {
+      "digitalocean": {
+        "command": "npx",
+        "args": ["-y", "@digitalocean/mcp"],
+        "env": {
+          "DIGITALOCEAN_API_TOKEN": "<DO_PERSONAL_ACCESS_TOKEN>"
+        }
+      }
+    }
+  }
+  ```
+- Exposes tools to inspect apps (`apps-get-info`), monitor deployments (`apps-get-deployment-status`), stream runtime logs (`apps-get-logs`), and update specs (`apps-update`).
+
 ## MongoDB conventions
 - connectMongo() creates/ensures indexes on startup.
 - Collections and invariants:
@@ -61,3 +99,4 @@
 - Add command parsing/behavior in src/telegram/commands.ts.
 - Keep interactive onboarding in src/telegram/onboarding.ts.
 - Escape all dynamic content; default disable_web_page_preview: true.
+

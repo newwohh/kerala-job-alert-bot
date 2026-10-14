@@ -102,26 +102,44 @@ This repo includes a `Dockerfile` and a `docker-compose.yml` for local usage.
 docker compose up --build
 ```
 
-## Deployment (Render.com)
+## Deployment
+
+### DigitalOcean App Platform (Recommended)
+
+This bot is configured to deploy directly to **DigitalOcean App Platform** using Docker:
+
+1. **Source**: Connect your GitHub repository and select the `master` branch (with auto-deploy enabled).
+2. **Component Type**: Service (or Worker).
+3. **HTTP Port**: Set `http_port` to `8080`. The app starts a built-in health server on `PORT` that responds `200 ok` on `/` and `/healthz`.
+4. **Environment Variables**:
+   * `BOT_TOKEN`: Telegram bot token from @BotFather (set as Encrypted / Secret)
+   * `CHANNEL_ID`: Channel or group username (e.g. `@joinkeralajobsalerts`)
+   * `MONGODB_URI`: MongoDB connection string (set as Encrypted / Secret)
+   * `PORT`: `8080`
+   * `RUN_JOBS_ON_STARTUP`: `true` (scrapes immediately upon container boot)
+   * `MONGODB_DB`: `job_alerts`
+   * `CRON_SCHEDULE`: `*/20 * * * *` (default: every 20 minutes)
+
+#### Managing via DigitalOcean MCP Server
+You can inspect deployments, stream logs, and update environment variables directly from AI agents via the `@digitalocean/mcp` server configured in `~/.gemini/config/mcp_config.json`.
+
+### Render.com
 
 This bot uses **long polling** (not webhooks). On Render, the best option is:
 
-### Recommended: Background Worker
-
+#### Recommended: Background Worker
 - Create a **Background Worker** service
-- Start command: `npm start` (or the Dockerfile default if deploying from Docker)
+- Start command: `npm start`
 - Set the required environment variables (`BOT_TOKEN`, `CHANNEL_ID`, `MONGODB_URI`, etc.)
 
-### Alternative: Web Service
+#### Alternative: Web Service
+If you deploy as a Web Service, Render expects your process to listen on `PORT`. The health server responds on `GET /` and `GET /healthz`.
 
-If you deploy as a Web Service, Render expects your process to listen on `PORT`.
+### Rate Limiting & Reliability
+- **Telegram Flood Protection**: Outgoing channel alerts are throttled with a 1.5-second delay between messages.
+- **429 Backoff**: If Telegram responds with `429 Too Many Requests`, the runner waits for the specified `retry_after` duration and retries automatically.
+- **Failed Post Rollback**: If sending fails permanently, the job is removed from MongoDB so it can be re-scraped and delivered on the next cycle.
 
-This app starts a small HTTP server automatically **when `PORT` is set**:
-
-- `GET /` → `ok`
-- `GET /healthz` → `ok`
-
-So Web Service can work, but Background Worker is still preferred for polling bots.
 
 ## Troubleshooting
 
