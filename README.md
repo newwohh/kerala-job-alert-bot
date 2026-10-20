@@ -2,18 +2,30 @@
 
 A Telegram bot that:
 
-- Scrapes job postings from multiple sources
-- Posts new jobs to a Telegram channel
+- Scrapes job postings from multiple sources (Infopark, Technopark)
+- Posts new jobs to a Telegram channel/supergroup
 - Lets users subscribe to keyword alerts (via DM) and search stored jobs
+- Serves a real-time **Live Analytics & Community Dashboard**
+
+> 📖 **Comprehensive Documentation**: Complete guides are available in the **[`docs/`](docs/README.md)** folder:
+> - [Architecture & Concurrency](docs/architecture.md)
+> - [Setup & Local Development](docs/setup-guide.md)
+> - [Live Analytics Dashboard](docs/dashboard.md)
+> - [Telegram Bot & Community Tracking](docs/telegram-bot.md)
+> - [Scrapers Pipeline](docs/scrapers.md)
+> - [Database Schema & Invariants](docs/database.md)
+> - [DigitalOcean Deployment Guide](docs/deployment.md)
 
 ## Features
 
 - **Multi-source scraping** (see `src/scrapers/`)
+- **Live Analytics Dashboard** on `/dashboard` and `/api/stats`
+- **Real-time Member Tracking** (`chat_member`, `my_chat_member`)
+- **Telegram Autocomplete Command Menu** (`setMyCommands`)
 - **Deduplication** using the job `link` as the stable identifier (MongoDB unique index)
 - **Keyword subscriptions** (case-insensitive substring match)
 - **Search** stored jobs via DM
 - **Optional onboarding announcement** to a group/channel on startup
-- **Optional analytics** (commands/clicks/events summary)
 
 ## Tech stack
 
