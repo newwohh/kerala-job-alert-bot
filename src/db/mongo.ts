@@ -4,6 +4,7 @@ import { log } from "../utils/logger.js";
 import { ensureAnalyticsIndexes } from "./analytics.js";
 import { ensureSubscriptionIndexes } from "./subscriptions.js";
 import { ensureUserNotificationIndexes } from "./userNotifications.js";
+import { ensureUserIndexes } from "./users.js";
 
 let db: Db | undefined;
 
@@ -19,6 +20,7 @@ export async function connectMongo(): Promise<Db> {
   await ensureAnalyticsIndexes();
   await ensureSubscriptionIndexes();
   await ensureUserNotificationIndexes();
+  await ensureUserIndexes();
 
   log("MongoDB connected");
   return db;

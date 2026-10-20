@@ -3,8 +3,23 @@ import { config } from "../config.js";
 import { Job } from "../types/job.js";
 import { escapeHtml, escapeHtmlAttr } from "./ui.js";
 
+const ALLOWED_UPDATES = [
+  "message",
+  "edited_message",
+  "channel_post",
+  "callback_query",
+  "chat_member",
+  "my_chat_member",
+  "chat_join_request"
+];
+
 export const bot = new TelegramBot(config.botToken, {
-  polling: { autoStart: false }
+  polling: {
+    autoStart: false,
+    params: {
+      allowed_updates: ALLOWED_UPDATES
+    }
+  }
 });
 
 let listenersInstalled = false;

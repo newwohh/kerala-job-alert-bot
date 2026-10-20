@@ -44,9 +44,12 @@
 ## Deployment & Hosting (DigitalOcean App Platform)
 - Production branch is `master` (DO App Platform deploys on push to `master`).
 - Container runtime: multi-stage build via `Dockerfile` (Node 22 Alpine).
-- Web service health probe:
+- Web service & Live Analytics Dashboard:
   - DO App Platform routes HTTP traffic to `PORT` (default `8080`).
-  - `startHealthServer()` in `src/utils/health-server.ts` listens on `PORT` and responds `200 ok` to `/` and `/healthz`.
+  - `startHealthServer()` in `src/utils/health-server.ts` listens on `PORT`.
+  - Serves modern Live Analytics Dashboard on `/` and `/dashboard`.
+  - Serves raw JSON analytics on `/api/stats` and `/api/dashboard`.
+  - Responds `200 ok` to `/healthz` (and text/plain requests to `/`).
   - Without `PORT` responding `200`, App Platform readiness probes fail (`DeployContainerExitNonZero`).
 - Rolling deploys & Telegram 409 conflicts:
   - During rolling deploys, old and new containers briefly overlap.

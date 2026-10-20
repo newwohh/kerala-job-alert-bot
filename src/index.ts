@@ -4,6 +4,8 @@ import { postOnboardingAnnouncement } from "./startup/announcement.js";
 import { runStartupJobs, scheduleRecurringTasks } from "./startup/scheduler.js";
 import { registerCommandHandlers } from "./telegram/commands.js";
 import { registerOnboardingHandlers } from "./telegram/onboarding.js";
+import { registerMemberEventHandlers } from "./telegram/events.js";
+import { setupBotCommands } from "./telegram/menu.js";
 import { bot, startBotPolling } from "./telegram/bot.js";
 import { error, log } from "./utils/logger.js";
 import { startHealthServer } from "./utils/health-server.js";
@@ -19,9 +21,11 @@ async function start(): Promise<void> {
   await connectMongo();
   log("Job Alert Bot running");
 
-  // 3. Register Telegram behavior before polling for new updates.
+  // 3. Register Telegram behavior & commands before polling for new updates.
+  await setupBotCommands(bot);
   registerCommandHandlers(bot);
   registerOnboardingHandlers(bot);
+  registerMemberEventHandlers(bot);
   await startBotPolling();
 
   // 4. Run optional startup tasks.

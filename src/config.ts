@@ -33,5 +33,7 @@ export const config = {
   promoUrl: envString("PROMO_URL", { default: "" }),
   promoButtonText: envString("PROMO_BUTTON_TEXT", { default: "Learn more" }),
   runJobsOnStartup: envBoolean("RUN_JOBS_ON_STARTUP", { default: false, truthy: ["1", "true", "yes", "y", "on"], falsy: ["0", "false", "no", "n", "off"] }),
-  onboardingChatId: envString("ONBOARDING_CHAT_ID", { default: "" })
+  onboardingChatId: envString("ONBOARDING_CHAT_ID", { default: "" }),
+  port: envNumber("PORT", { default: 0, integer: true, min: 0 }),
+  dashboardEnabled: envBoolean("DASHBOARD_ENABLED", { default: true, truthy: ["1", "true", "yes", "y", "on"], falsy: ["0", "false", "no", "n", "off"] })
 };
