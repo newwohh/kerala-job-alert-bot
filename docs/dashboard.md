@@ -127,7 +127,7 @@ Making a `GET` request to `/api/stats` returns the complete state tree:
   },
   "system": {
     "uptimeSeconds": 1420,
-    "uptimeFormatted": "23m 40s",
+    "uptimeFormatted": "0d",
     "nodeVersion": "v22.14.0",
     "memoryMb": {
       "rss": 131,
