@@ -1,0 +1,58 @@
+{
+  "name": "Merin Raju",
+  "headline": "QUALITY ASSURANCE ANALYST — SOFTWARE TESTER",
+  "location": "Sharjah, UAE",
+  "visaStatus": "Husband Visa",
+  "phone": "+971 54 340 3669",
+  "email": "merinraju566@gmail.com",
+  "linkedin": "https://linkedin.com/in/merin-raju-9aa455236",
+  "summary": "Software Quality Assurance Engineer with 5+ years of experience in Manual Testing, Functional Testing, Regression Testing, Integration Testing, API Testing, and Web & Mobile Application Testing. Skilled in SDLC, STLC, test case design, defect lifecycle management, JIRA, Postman, Agile Scrum, and release validation. Proven ability to deliver high-quality software through comprehensive testing, defect tracking, and collaboration with cross-functional teams.",
+  "experience": [
+    {
+      "title": "Software Tester",
+      "company": "Tathkarah.com — Tours and Travels",
+      "location": "Kochi, India",
+      "dates": "Feb 2024 – Jan 2026",
+      "bullets": [
+        "Performed manual, functional, regression, integration, and API testing for web and mobile applications in the travel and tourism domain, including flight and hotel booking systems.",
+        "Designed and executed 2,500+ test cases, ensuring test coverage and release readiness.",
+        "Reported, tracked, and verified 800+ software defects using JIRA while collaborating with developers.",
+        "Supported 60+ production releases by validating application functionality, APIs using Postman, and critical business workflows.",
+        "Tested flight booking, hotel booking, tour package, and payment modules across Android, iOS, and web platforms."
+      ]
+    },
+    {
+      "title": "Software Tester",
+      "company": "Cyberia Softwares Pvt. Ltd.",
+      "location": "Technopark, India",
+      "dates": "Jan 2019 – Dec 2022",
+      "bullets": [
+        "Executed manual testing for web and mobile applications by preparing and running functional, regression, smoke, and sanity test cases.",
+        "Identified, documented, and verified software defects while working closely with development teams.",
+        "Participated in requirement analysis, Agile sprint activities, and release validation throughout the SDLC.",
+        "Maintained testing documentation and ensured software quality before production deployment.",
+        "Collaborated with business analysts, developers, and QA teams to validate requirements, reproduce issues, and resolve defects before releases."
+      ]
+    },
+    {
+      "title": "Computer Science Trainer",
+      "company": "Sabarigiri Residential School",
+      "location": "Kerala, India",
+      "dates": "Mar 2018 – Jan 2019",
+      "bullets": [
+        "Delivered computer science training using structured lesson plans and practical demonstrations.",
+        "Evaluated student performance through assessments and provided academic guidance.",
+        "Developed classroom materials and monitored student progress."
+      ]
+    }
+  ],
+  "skills": ["Manual Testing", "Functional Testing", "Regression Testing", "Integration Testing", "API Testing", "Web Application Testing", "Mobile Application Testing", "JIRA", "Postman", "SDLC", "STLC", "Agile Scrum", "Test Case Design", "Defect Tracking", "Microsoft Excel", "Microsoft Office", "Flight Booking Systems", "Hotel Booking Systems"],
+  "education": [
+    {"degree":"Master of Computer Application (MCA)","institution":"Rathnavel Subramaniam College of Arts and Science, Coimbatore, Tamil Nadu, India","dates":"2016 – 2018"},
+    {"degree":"Bachelor of Computer Application (BCA)","institution":"St. Thomas College, Ranni, Kerala, India","dates":"2012 – 2015"}
+  ],
+  "achievements": ["Executed 5,000+ test cases across web and mobile applications.", "Reported and verified 1,800+ software defects using JIRA.", "Supported 80+ successful production releases while ensuring application quality and release readiness."],
+  "languages": ["English", "Malayalam", "Hindi", "Tamil"],
+  "availability": "Available to join immediately",
+  "importantNote": "Resume source contains potentially overlapping testing bullets and different totals between role bullets and key achievements. Preserve claims as provided but flag totals for human verification before sending. Never invent skills or experience."
+}

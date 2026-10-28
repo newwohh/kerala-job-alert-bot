@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Job {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  source       String        @default("Google Jobs via SerpAPI")
+  externalId   String?       @unique
+  title        String
+  company      String
+  location     String?
+  jobUrl       String        @unique
+  description  String        @default("")
+  postedAt     String?
+  discoveredAt DateTime      @default(now())
+  applications Application[]
+}
+
+model Application {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  jobId           String    @db.ObjectId
+  job             Job       @relation(fields: [jobId], references: [id])
+  recipientEmail  String?
+  recipientSource String?
+  emailSubject    String
+  emailBody       String
+  tailoredResume  String
+  resumeFile      String
+  matchScore      Int       @default(0)
+  status          String    @default("PENDING_APPROVAL")
+  approvedAt      DateTime?
+  sentAt          DateTime?
+  sendError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}

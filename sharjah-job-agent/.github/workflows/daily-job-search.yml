@@ -1,0 +1,43 @@
+name: Daily Job Agent Search
+
+on:
+  schedule:
+    # Runs at 15:00 UTC every day (7:00 PM UAE / Gulf Standard Time)
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+    # Allows running manually anytime from the GitHub Actions tab
+
+jobs:
+  search-and-notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run Job Search Agent
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL || 'gpt-4.1-mini' }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+          APPS_SCRIPT_SECRET: ${{ secrets.APPS_SCRIPT_SECRET }}
+          MAX_JOBS_PER_RUN: 1
+          REQUIRE_EMAIL: 'false'
+          DRY_RUN: ${{ secrets.DRY_RUN || 'false' }}
+        run: npm run search

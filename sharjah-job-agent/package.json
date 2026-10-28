@@ -1,0 +1,24 @@
+{
+  "name": "sharjah-job-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "search": "node src/run-once.js",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.10.1",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "node-cron": "^4.6.0",
+    "openai": "^5.8.2",
+    "pdfkit": "^0.16.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.10.1"
+  }
+}
