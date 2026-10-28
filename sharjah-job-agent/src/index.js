@@ -174,18 +174,87 @@ async function handleCallback(update) {
   });
 }
 
+async function handleMessage(update) {
+  const msg = update.message;
+  if (!msg || !msg.text) return;
+  const fromChat = String(msg.chat?.id ?? '');
+  const allowedChat = String(process.env.TELEGRAM_CHAT_ID ?? '');
+  if (!allowedChat || fromChat !== allowedChat) return;
+
+  const text = msg.text.trim().toLowerCase();
+  if (text.startsWith('/get-one') || text.startsWith('/get_one') || text === '/get') {
+    await telegramCall('sendMessage', {
+      chat_id: allowedChat,
+      text: '🔍 Searching online for a new job matching Merin’s profile now...'
+    });
+
+    try {
+      const result = await processNextJob({ maxJobs: 1 });
+      if (result.added === 0) {
+        if (result.discovered > 0) {
+          await telegramCall('sendMessage', {
+            chat_id: allowedChat,
+            text: `ℹ️ Discovered ${result.discovered} listings, but they have already been saved. Will check again at 7:00 PM!`
+          });
+        } else {
+          await telegramCall('sendMessage', {
+            chat_id: allowedChat,
+            text: 'ℹ️ No new jobs found online at this moment. Will check again at 7:00 PM!'
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Manual /get-one search error:', err.message);
+      await telegramCall('sendMessage', {
+        chat_id: allowedChat,
+        text: `⚠️ Search error: ${err.message}`
+      });
+    }
+  } else if (text === '/start') {
+    await telegramCall('sendMessage', {
+      chat_id: allowedChat,
+      text: `👋 Hello! I am your UAE Job Agent.\n\n⏰ I automatically search and send you 1 new job every day at 7:00 PM UAE time.\n\n⚡️ You can also trigger an immediate job search anytime by sending: /get-one`
+    });
+  }
+}
+
 async function telegramPoller() {
   if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
     console.warn('Telegram is not configured; skipping bot polling.');
     return;
   }
+
+  // Register command in menu
+  try {
+    await telegramCall('setMyCommands', {
+      commands: [
+        { command: 'get_one', description: 'Fetch and process 1 new job now' },
+        { command: 'start', description: 'Bot status and overview' }
+      ]
+    });
+  } catch (e) {
+    console.warn('Could not register bot commands menu:', e.message);
+  }
+
   let offset = 0;
   while (true) {
     try {
-      const updates = await telegramCall('getUpdates', { offset, timeout: 25, allowed_updates: ['callback_query'] });
+      const updates = await telegramCall('getUpdates', {
+        offset,
+        timeout: 25,
+        allowed_updates: ['callback_query', 'message']
+      });
       for (const update of updates) {
         offset = update.update_id + 1;
-        try { await handleCallback(update); } catch (e) { console.error('Telegram callback failed:', e.message); }
+        try {
+          if (update.callback_query) {
+            await handleCallback(update);
+          } else if (update.message) {
+            await handleMessage(update);
+          }
+        } catch (e) {
+          console.error('Telegram update handler failed:', e.message);
+        }
       }
     } catch (e) {
       console.error('Telegram polling error:', e.message);
