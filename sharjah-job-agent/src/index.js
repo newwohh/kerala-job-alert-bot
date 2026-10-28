@@ -6,7 +6,7 @@ import path from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import { profile } from './profile.js';
 import { processNextJob } from './processor.js';
-import { sendApplicationPreview, telegramCall, getAllowedChats } from './telegram.js';
+import { sendApplicationPreview, telegramCall, getAllowedChats, addSubscriber } from './telegram.js';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -79,11 +79,8 @@ async function handleCallback(update) {
   const query = update.callback_query;
   if (!query) return;
   const fromChat = String(query.message?.chat?.id ?? '');
-  const allowedChats = getAllowedChats();
-  if (!allowedChats.includes(fromChat)) {
-    await safeAnswerCallback(query.id, 'Unauthorized chat.', true);
-    return;
-  }
+  if (fromChat) addSubscriber(fromChat);
+
   const [action, id] = String(query.data || '').split(':');
 
   if (action === 'done') {
@@ -178,27 +175,7 @@ async function handleMessage(update) {
   const msg = update.message;
   if (!msg || !msg.text) return;
   const fromChat = String(msg.chat?.id ?? '');
-  const allowedChats = getAllowedChats();
-  const primaryAdmin = allowedChats[0] || '858620739';
-
-  // If user is not yet authorized, provide their Chat ID and notify admin
-  if (!allowedChats.includes(fromChat)) {
-    const senderName = msg.from?.first_name || 'there';
-    await telegramCall('sendMessage', {
-      chat_id: fromChat,
-      text: `👋 Hello ${senderName}!\n\nI am the UAE Job Agent for Merin Raju.\n\n🔒 This bot only sends alerts and accepts commands from authorized accounts.\n\n📱 <b>Your Telegram Chat ID:</b> <code>${fromChat}</code>\n\nPlease share this Chat ID with Nevin so he can enable job alerts and resume previews on your phone!`,
-      parse_mode: 'HTML'
-    });
-
-    try {
-      await telegramCall('sendMessage', {
-        chat_id: primaryAdmin,
-        text: `🔔 <b>New Telegram User Connected</b>\n\n👤 <b>Name:</b> ${senderName}\n📱 <b>Chat ID:</b> <code>${fromChat}</code>\n💬 <b>Username:</b> @${msg.from?.username || 'none'}\n\nAdd this Chat ID to TELEGRAM_CHAT_ID to enable alerts and /get-one for them!`,
-        parse_mode: 'HTML'
-      });
-    } catch (e) {}
-    return;
-  }
+  if (fromChat) addSubscriber(fromChat);
 
   const text = msg.text.trim().toLowerCase();
   if (text.startsWith('/get-one') || text.startsWith('/get_one') || text === '/get') {
@@ -232,7 +209,7 @@ async function handleMessage(update) {
   } else if (text === '/start') {
     await telegramCall('sendMessage', {
       chat_id: fromChat,
-      text: `👋 Hello! I am your UAE Job Agent.\n\n⏰ I automatically search and send 1 new job every day at 7:00 PM UAE time.\n\n⚡️ You can also trigger an immediate job search anytime by sending: /get-one`
+      text: `👋 Hello! I am your UAE Job Agent for Merin Raju.\n\n⏰ I automatically search and send 1 new job every day at 7:00 PM UAE time.\n\n⚡️ You can also trigger an immediate job search anytime by sending: /get-one`
     });
   }
 }

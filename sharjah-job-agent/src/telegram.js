@@ -2,12 +2,44 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const apiBase = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
+const subscribersFile = path.resolve('data/subscribers.json');
 
-export function getAllowedChats() {
-  return (process.env.TELEGRAM_CHAT_ID || '')
+function loadSubscribers() {
+  const defaults = (process.env.TELEGRAM_CHAT_ID || '')
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
+  const set = new Set(defaults);
+  try {
+    if (fs.existsSync(subscribersFile)) {
+      const data = JSON.parse(fs.readFileSync(subscribersFile, 'utf8'));
+      if (Array.isArray(data)) {
+        for (const id of data) if (id) set.add(String(id));
+      }
+    }
+  } catch (e) {}
+  return set;
+}
+
+const activeChats = loadSubscribers();
+
+export function addSubscriber(chatId) {
+  if (!chatId) return;
+  const strId = String(chatId);
+  if (!activeChats.has(strId)) {
+    activeChats.add(strId);
+    try {
+      fs.mkdirSync(path.dirname(subscribersFile), { recursive: true });
+      fs.writeFileSync(subscribersFile, JSON.stringify([...activeChats], null, 2));
+      console.log(`Registered new Telegram subscriber: ${strId}`);
+    } catch (e) {
+      console.warn('Could not persist subscriber:', e.message);
+    }
+  }
+}
+
+export function getAllowedChats() {
+  return [...activeChats];
 }
 
 export async function telegramCall(method, payload) {
