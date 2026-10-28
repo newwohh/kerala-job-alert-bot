@@ -14,11 +14,12 @@
       "location": "Kochi, India",
       "dates": "Feb 2024 – Jan 2026",
       "bullets": [
-        "Performed manual, functional, regression, integration, and API testing for web and mobile applications in the travel and tourism domain, including flight and hotel booking systems.",
-        "Designed and executed 2,500+ test cases, ensuring test coverage and release readiness.",
-        "Reported, tracked, and verified 800+ software defects using JIRA while collaborating with developers.",
+        "Performed Manual, Functional, Regression, Integration, and API Testing for web and mobile applications in the Travel & Tourism domain, including Flight Booking and Hotel Booking Systems.",
+        "Designed and executed 2,500+ test cases, ensuring complete test coverage and release readiness.",
+        "Reported, tracked, and verified 800+ software defects using JIRA while collaborating closely with developers.",
         "Supported 60+ production releases by validating application functionality, APIs using Postman, and critical business workflows.",
-        "Tested flight booking, hotel booking, tour package, and payment modules across Android, iOS, and web platforms."
+        "Performed Manual, Functional, Regression, Integration, and API Testing for Travel & Tourism applications, including Flight Booking, Hotel Booking, Tour Package, and Payment modules across Android, iOS, and Web platforms.",
+        "Designed and executed test cases, reported and verified defects using JIRA, validated APIs with Postman, and supported production releases to ensure software quality and application stability."
       ]
     },
     {
@@ -31,7 +32,7 @@
         "Identified, documented, and verified software defects while working closely with development teams.",
         "Participated in requirement analysis, Agile sprint activities, and release validation throughout the SDLC.",
         "Maintained testing documentation and ensured software quality before production deployment.",
-        "Collaborated with business analysts, developers, and QA teams to validate requirements, reproduce issues, and resolve defects before releases."
+        "Collaborated with business analysts, developers, and QA teams to validate business requirements, reproduce reported issues, and ensure timely defect resolution before production releases."
       ]
     },
     {
@@ -40,9 +41,10 @@
       "location": "Kerala, India",
       "dates": "Mar 2018 – Jan 2019",
       "bullets": [
-        "Delivered computer science training using structured lesson plans and practical demonstrations.",
-        "Evaluated student performance through assessments and provided academic guidance.",
-        "Developed classroom materials and monitored student progress."
+        "Delivered computer science training sessions for students using structured lesson plans and practical demonstrations.",
+        "Evaluated student performance through assessments and provided continuous academic guidance.",
+        "Developed classroom materials and monitored student progress to improve learning outcomes.",
+        "Supported academic activities while maintaining effective classroom management and student engagement."
       ]
     }
   ],
@@ -51,7 +53,11 @@
     {"degree":"Master of Computer Application (MCA)","institution":"Rathnavel Subramaniam College of Arts and Science, Coimbatore, Tamil Nadu, India","dates":"2016 – 2018"},
     {"degree":"Bachelor of Computer Application (BCA)","institution":"St. Thomas College, Ranni, Kerala, India","dates":"2012 – 2015"}
   ],
-  "achievements": ["Executed 5,000+ test cases across web and mobile applications.", "Reported and verified 1,800+ software defects using JIRA.", "Supported 80+ successful production releases while ensuring application quality and release readiness."],
+  "achievements": [
+    "Executed 5,000+ test cases across web and mobile applications.",
+    "Reported and verified 1,800+ software defects using JIRA.",
+    "Supported 80+ successful production releases while ensuring application quality and release readiness."
+  ],
   "languages": ["English", "Malayalam", "Hindi", "Tamil"],
   "availability": "Available to join immediately",
   "importantNote": "Resume source contains potentially overlapping testing bullets and different totals between role bullets and key achievements. Preserve claims as provided but flag totals for human verification before sending. Never invent skills or experience."

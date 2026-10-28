@@ -12,11 +12,18 @@ function cleanName(value) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 70) || 'job';
 }
 
-function pick(original, candidate) {
-  if (!Array.isArray(candidate)) return original;
-  const set = new Set(original.map(b => b.trim().toLowerCase()));
-  const chosen = candidate.filter(b => typeof b === 'string' && set.has(b.trim().toLowerCase()));
-  return chosen.length ? chosen : original;
+function prioritizeBullets(original, candidate) {
+  if (!Array.isArray(candidate) || !candidate.length) return original;
+  const reordered = [];
+  for (const c of candidate) {
+    if (typeof c !== 'string') continue;
+    const match = original.find(orig => orig.trim().toLowerCase() === c.trim().toLowerCase());
+    if (match && !reordered.includes(match)) reordered.push(match);
+  }
+  for (const orig of original) {
+    if (!reordered.includes(orig)) reordered.push(orig);
+  }
+  return reordered.length ? reordered : original;
 }
 
 export async function tailorApplication(job) {
@@ -37,8 +44,17 @@ export async function tailorApplication(job) {
         temperature: 0.2,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: `You tailor resumes strictly using verified facts from a source profile. Never invent employers, tools, dates, duties, metrics, or certifications. Output JSON: summary (string, professional paragraph), skills (string[] drawn only from profile skills, prioritized by relevance to the job), bullets (array of arrays: one array of strings per experience entry, choosing the most relevant existing bullets from the source), emailSubject (string), emailBody (string, polite and concise cover letter), matchScore (0-100 integer), missingRequirements (string[]).` },
-          { role: 'user', content: JSON.stringify({ sourceProfile: profile, job: { title: job.title, company: job.company, location: job.location, description: job.description } }) }
+          {
+            role: 'system',
+            content: `You tailor resumes strictly using verified facts from a source profile. Never invent employers, tools, dates, duties, metrics, or certifications. Output JSON: summary (string, professional paragraph), skills (string[] drawn only from profile skills, prioritized by relevance to the job), bullets (array of arrays: one array of strings per experience entry, prioritizing the most relevant existing bullets first from the source), emailSubject (string), emailBody (string, polite and concise cover letter), matchScore (0-100 integer), missingRequirements (string[]).`
+          },
+          {
+            role: 'user',
+            content: JSON.stringify({
+              sourceProfile: profile,
+              job: { title: job.title, company: job.company, location: job.location, description: job.description }
+            })
+          }
         ]
       });
       const parsed = JSON.parse(response.choices[0].message.content);
@@ -48,8 +64,8 @@ export async function tailorApplication(job) {
         summary: typeof parsed.summary === 'string' && parsed.summary.trim() ? parsed.summary.trim() : base.summary,
         skills: skills.length ? skills : profile.skills,
         experience: profile.experience.map((original, i) => {
-          const bullets = pick(original.bullets || [], parsed.bullets?.[i]).slice(0, 6);
-          return bullets.length ? { ...original, bullets } : original;
+          const bullets = prioritizeBullets(original.bullets || [], parsed.bullets?.[i]);
+          return { ...original, bullets };
         }),
         matchScore: Math.max(0, Math.min(100, Number(parsed.matchScore) || 0)),
         missingRequirements: Array.isArray(parsed.missingRequirements) ? parsed.missingRequirements.map(String) : []
@@ -71,7 +87,7 @@ export async function createResumePdf(job, tailored) {
   await new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
-      margins: { top: 36, bottom: 36, left: 45, right: 45 },
+      margins: { top: 32, bottom: 32, left: 34, right: 34 },
       info: {
         Title: `${profile.name} - ${job.title}`,
         Author: profile.name,
@@ -82,64 +98,70 @@ export async function createResumePdf(job, tailored) {
     const stream = fs.createWriteStream(file);
     doc.pipe(stream);
 
-    const left = 45;
-    const right = 550;
-    const contentWidth = right - left;
+    const left = 34;
+    const right = 561; // 595.28 - 34
+    const contentWidth = right - left; // 527
 
-    function drawSectionHeader(title) {
-      doc.moveDown(0.65);
-      doc.font('Helvetica-Bold').fontSize(10).fillColor('#000000').text(title.toUpperCase(), left);
-      const lineY = doc.y + 2;
-      doc.moveTo(left, lineY).lineTo(right, lineY).lineWidth(0.75).strokeColor('#000000').stroke();
-      doc.y = lineY + 6;
+    function drawSectionHeader(title, isFirstOnPage = false, spaceBefore = 22) {
+      if (!isFirstOnPage) {
+        doc.y += spaceBefore;
+      }
+      const textY = doc.y;
+      doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#000000').text(title.toUpperCase(), left, textY);
+      const lineY = doc.y + 2.5;
+      doc.moveTo(left, lineY).lineTo(right, lineY).lineWidth(0.65).strokeColor('#000000').stroke();
+      doc.y = lineY + 7;
     }
 
     // ==========================================
     // PAGE 1: Header, Summary, Experience
     // ==========================================
-
-    // Header (Centered LaTeX Style)
-    doc.font('Helvetica-Bold').fontSize(19).fillColor('#000000').text(profile.name.toUpperCase(), { align: 'center' });
-    doc.moveDown(0.15);
-    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#222222').text(profile.headline, { align: 'center' });
-    doc.moveDown(0.15);
-    doc.font('Helvetica').fontSize(9).fillColor('#333333').text(`${profile.location} (${profile.visaStatus})`, { align: 'center' });
-    doc.moveDown(0.12);
-    doc.font('Helvetica').fontSize(8.5).fillColor('#333333').text(`Mobile: ${profile.phone}   |   Email: ${profile.email}`, { align: 'center' });
-    doc.moveDown(0.1);
-    doc.font('Helvetica').fontSize(8.5).fillColor('#0044cc').text(profile.linkedin.replace(/^https?:\/\//, ''), { align: 'center' });
+    doc.font('Helvetica-Bold').fontSize(19.5).fillColor('#000000').text(profile.name.toUpperCase(), { align: 'center' });
+    doc.y += 3.5;
+    doc.font('Helvetica-Bold').fontSize(10.2).fillColor('#222222').text(profile.headline, { align: 'center' });
+    doc.y += 3.5;
+    doc.font('Helvetica').fontSize(9.5).fillColor('#333333').text(`${profile.location} (${profile.visaStatus})`, { align: 'center' });
+    doc.y += 3;
+    doc.font('Helvetica').fontSize(9.5).fillColor('#333333').text(`Mobile: ${profile.phone}`, { align: 'center' });
+    doc.y += 3;
+    doc.font('Helvetica').fontSize(9.5).fillColor('#333333').text(`Email: ${profile.email}`, { align: 'center' });
+    doc.y += 3;
+    doc.font('Helvetica').fontSize(9.5).fillColor('#0044cc').text(
+      `LinkedIn: ${profile.linkedin.replace(/^https?:\/\//, '')}`,
+      { align: 'center' }
+    );
 
     // Professional Summary
-    drawSectionHeader('Professional Summary');
-    doc.font('Helvetica').fontSize(8.5).fillColor('#111111').text(
+    drawSectionHeader('Professional Summary', false, 16);
+    doc.font('Helvetica').fontSize(9.5).fillColor('#111111').text(
       tailored.summary || profile.summary,
       left,
       doc.y,
-      { width: contentWidth, align: 'justify', lineGap: 2.2 }
+      { width: contentWidth, align: 'justify', lineGap: 3.5 }
     );
 
     // Professional Experience
-    drawSectionHeader('Professional Experience');
+    drawSectionHeader('Professional Experience', false, 18);
     const experiences = tailored.experience || profile.experience;
 
     for (let i = 0; i < experiences.length; i++) {
       const exp = experiences[i];
-      if (i > 0) doc.moveDown(0.55);
+      if (i > 0) doc.y += 18;
 
       const startY = doc.y;
-      doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(exp.title.toUpperCase(), left, startY);
-      doc.font('Helvetica-Bold').fontSize(9).fillColor('#000000').text(exp.dates, left, startY, { width: contentWidth, align: 'right' });
-      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#333333').text(`${exp.company.toUpperCase()}, ${exp.location.toUpperCase()}`, left);
-      doc.moveDown(0.25);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#000000').text(exp.title.toUpperCase(), left, startY);
+      doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(exp.dates, left, startY, { width: contentWidth, align: 'right' });
+      doc.font('Helvetica-Bold').fontSize(9.2).fillColor('#222222').text(`${exp.company.toUpperCase()}, ${exp.location.toUpperCase()}`, left);
+      doc.y += 5;
 
       for (const bullet of exp.bullets || []) {
         const bulletY = doc.y;
-        doc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('•', left + 4, bulletY);
-        doc.font('Helvetica').fontSize(8.5).fillColor('#111111').text(bullet, left + 16, bulletY, {
+        doc.font('Helvetica').fontSize(9.3).fillColor('#000000').text('•', left + 4, bulletY);
+        doc.font('Helvetica').fontSize(9.3).fillColor('#111111').text(bullet, left + 16, bulletY, {
           width: contentWidth - 16,
-          lineGap: 1.8
+          lineGap: 3.0
         });
-        doc.moveDown(0.25);
+        doc.y += 7.5;
       }
     }
 
@@ -148,8 +170,8 @@ export async function createResumePdf(job, tailored) {
     // ==========================================
     doc.addPage();
 
-    // Core Competencies (Two Columns)
-    drawSectionHeader('Core Competencies');
+    // Core Competencies
+    drawSectionHeader('Core Competencies', true);
     const competencies = [
       'Manual, Functional & Regression Testing',
       'Integration & API Testing',
@@ -167,70 +189,64 @@ export async function createResumePdf(job, tailored) {
     const col1Comp = competencies.slice(0, midComp);
     const col2Comp = competencies.slice(midComp);
 
-    let compStartY = doc.y;
-    for (const c of col1Comp) {
-      const y = doc.y;
-      doc.font('Helvetica').fontSize(8.5).text('•', left + 4, y);
-      doc.font('Helvetica').fontSize(8.5).text(c, left + 16, y, { width: colWidth - 16 });
-      doc.moveDown(0.35);
+    const compStartY = doc.y;
+    const compRowStep = 23;
+    for (let i = 0; i < col1Comp.length; i++) {
+      const rowY = compStartY + (i * compRowStep);
+      doc.font('Helvetica').fontSize(9.6).text('•', left + 4, rowY);
+      doc.font('Helvetica').fontSize(9.6).text(col1Comp[i], left + 18, rowY, { width: colWidth - 18 });
+      doc.font('Helvetica').fontSize(9.6).text('•', left + colWidth + 20, rowY);
+      doc.font('Helvetica').fontSize(9.6).text(col2Comp[i], left + colWidth + 34, rowY, { width: colWidth - 18 });
     }
-    const compEndCol1 = doc.y;
-
-    doc.y = compStartY;
-    for (const c of col2Comp) {
-      const y = doc.y;
-      doc.font('Helvetica').fontSize(8.5).text('•', left + colWidth + 24, y);
-      doc.font('Helvetica').fontSize(8.5).text(c, left + colWidth + 36, y, { width: colWidth - 16 });
-      doc.moveDown(0.35);
-    }
-    doc.y = Math.max(compEndCol1, doc.y);
+    doc.y = compStartY + (col1Comp.length * compRowStep) + 6;
 
     // Education
-    drawSectionHeader('Education');
-    for (const edu of profile.education) {
+    drawSectionHeader('Education', false, 24);
+    for (let i = 0; i < profile.education.length; i++) {
+      const edu = profile.education[i];
+      if (i > 0) doc.y += 14;
       const eduY = doc.y;
-      doc.font('Helvetica-Bold').fontSize(9).fillColor('#000000').text(edu.degree, left, eduY);
-      doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#000000').text(edu.dates, left, eduY, { width: contentWidth, align: 'right' });
-      doc.font('Helvetica').fontSize(8.5).fillColor('#333333').text(edu.institution, left);
-      doc.moveDown(0.35);
+      doc.font('Helvetica-Bold').fontSize(9.8).fillColor('#000000').text(edu.degree, left, eduY);
+      doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000').text(edu.dates, left, eduY, { width: contentWidth, align: 'right' });
+      doc.font('Helvetica').fontSize(9.2).fillColor('#333333').text(edu.institution, left);
     }
+    doc.y += 6;
 
-    // Technical Skills (Two Columns)
-    drawSectionHeader('Technical Skills');
-    const skillsList = tailored.skills && tailored.skills.length ? tailored.skills : profile.skills;
+    // Technical Skills
+    drawSectionHeader('Technical Skills', false, 24);
+    const defaultSkills = [
+      'JIRA', 'Postman', 'Manual Testing', 'API Testing', 'Regression Testing', 'Functional Testing',
+      'Integration Testing', 'Test Case Design', 'Defect Tracking', 'Agile Scrum', 'Microsoft Excel', 'Microsoft Office'
+    ];
+    const skillsList = tailored.skills && tailored.skills.length >= 10 ? tailored.skills.slice(0, 12) : defaultSkills;
     const midSkills = Math.ceil(skillsList.length / 2);
     const col1Skills = skillsList.slice(0, midSkills);
     const col2Skills = skillsList.slice(midSkills);
 
-    let skillsStartY = doc.y;
-    for (const s of col1Skills) {
-      const y = doc.y;
-      doc.font('Helvetica').fontSize(8.5).text('•', left + 4, y);
-      doc.font('Helvetica').fontSize(8.5).text(s, left + 16, y, { width: colWidth - 16 });
-      doc.moveDown(0.3);
+    const skillsStartY = doc.y;
+    const skillsRowStep = 23;
+    for (let i = 0; i < col1Skills.length; i++) {
+      const rowY = skillsStartY + (i * skillsRowStep);
+      doc.font('Helvetica').fontSize(9.6).text('•', left + 4, rowY);
+      doc.font('Helvetica').fontSize(9.6).text(col1Skills[i], left + 18, rowY, { width: colWidth - 18 });
+      doc.font('Helvetica').fontSize(9.6).text('•', left + colWidth + 20, rowY);
+      if (col2Skills[i]) {
+        doc.font('Helvetica').fontSize(9.6).text(col2Skills[i], left + colWidth + 34, rowY, { width: colWidth - 18 });
+      }
     }
-    const skillsEndCol1 = doc.y;
-
-    doc.y = skillsStartY;
-    for (const s of col2Skills) {
-      const y = doc.y;
-      doc.font('Helvetica').fontSize(8.5).text('•', left + colWidth + 24, y);
-      doc.font('Helvetica').fontSize(8.5).text(s, left + colWidth + 36, y, { width: colWidth - 16 });
-      doc.moveDown(0.3);
-    }
-    doc.y = Math.max(skillsEndCol1, doc.y);
+    doc.y = skillsStartY + (col1Skills.length * skillsRowStep) + 6;
 
     // Key Achievements
-    drawSectionHeader('Key Achievements');
+    drawSectionHeader('Key Achievements', false, 24);
     for (const ach of profile.achievements) {
       const achY = doc.y;
-      doc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('•', left + 4, achY);
-      doc.font('Helvetica').fontSize(8.5).fillColor('#111111').text(ach, left + 16, achY, { width: contentWidth - 16, lineGap: 1.5 });
-      doc.moveDown(0.3);
+      doc.font('Helvetica').fontSize(9.6).fillColor('#000000').text('•', left + 4, achY);
+      doc.font('Helvetica').fontSize(9.6).fillColor('#111111').text(ach, left + 18, achY, { width: contentWidth - 18, lineGap: 3.0 });
+      doc.y += 10;
     }
 
     // Additional Information
-    drawSectionHeader('Additional Information');
+    drawSectionHeader('Additional Information', false, 24);
     const additional = [
       `Languages: ${profile.languages.join(', ')}`,
       `Visa Status: ${profile.visaStatus}`,
@@ -239,9 +255,9 @@ export async function createResumePdf(job, tailored) {
     ];
     for (const item of additional) {
       const addY = doc.y;
-      doc.font('Helvetica').fontSize(8.5).fillColor('#000000').text('•', left + 4, addY);
-      doc.font('Helvetica').fontSize(8.5).fillColor('#111111').text(item, left + 16, addY, { width: contentWidth - 16 });
-      doc.moveDown(0.25);
+      doc.font('Helvetica').fontSize(9.6).fillColor('#000000').text('•', left + 4, addY);
+      doc.font('Helvetica').fontSize(9.6).fillColor('#111111').text(item, left + 18, addY, { width: contentWidth - 18 });
+      doc.y += 9;
     }
 
     doc.end();
