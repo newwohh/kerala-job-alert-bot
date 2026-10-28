@@ -209,7 +209,7 @@ async function handleMessage(update) {
   } else if (text === '/start') {
     await telegramCall('sendMessage', {
       chat_id: fromChat,
-      text: `👋 Hello! I am your UAE Job Agent for Merin Raju.\n\n⏰ I automatically search and send 1 new job every day at 7:00 PM UAE time.\n\n⚡️ You can also trigger an immediate job search anytime by sending: /get-one`
+      text: `👋 Hello! I am your UAE Job Agent for Merin Raju.\n\n⏰ I automatically search and send 5 new jobs every day at 7:00 PM UAE time.\n\n⚡️ You can also trigger an immediate job search anytime by sending: /get-one`
     });
   }
 }
@@ -261,10 +261,11 @@ async function telegramPoller() {
 
 // Schedule daily job search (defaults to 15:00 UTC = 7:00 PM UAE Time every day)
 const cronSchedule = process.env.DAILY_CRON || '0 15 * * *';
+const maxJobsDaily = Math.max(1, Number(process.env.MAX_JOBS_PER_RUN || 5));
 cron.schedule(cronSchedule, async () => {
-  console.log('⏰ Running daily job search (1 job per day at 7:00 PM UAE)...');
+  console.log(`⏰ Running daily job search (${maxJobsDaily} jobs per day at 7:00 PM UAE)...`);
   try {
-    const result = await processNextJob({ maxJobs: 1 });
+    const result = await processNextJob({ maxJobs: maxJobsDaily });
     console.log(`Daily run finished: Discovered ${result.discovered}, Added ${result.added}, Skipped ${result.skippedDuplicates}`);
   } catch (err) {
     console.error('Scheduled daily job search error:', err.message);
