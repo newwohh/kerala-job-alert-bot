@@ -3,6 +3,13 @@ import path from 'node:path';
 
 const apiBase = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 
+export function getAllowedChats() {
+  return (process.env.TELEGRAM_CHAT_ID || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
 export async function telegramCall(method, payload) {
   if (!process.env.TELEGRAM_BOT_TOKEN) throw new Error('TELEGRAM_BOT_TOKEN is missing');
   const response = await fetch(`${apiBase()}/${method}`, {
@@ -16,28 +23,32 @@ export async function telegramCall(method, payload) {
 }
 
 export async function sendTelegramDocument(filePath, caption = '') {
-  if (!process.env.TELEGRAM_CHAT_ID || !process.env.TELEGRAM_BOT_TOKEN) return;
-  try {
-    const fileBytes = fs.readFileSync(filePath);
-    const blob = new Blob([fileBytes], { type: 'application/pdf' });
-    const form = new FormData();
-    form.append('chat_id', process.env.TELEGRAM_CHAT_ID);
-    form.append('caption', caption);
-    form.append('document', blob, path.basename(filePath));
+  const chats = getAllowedChats();
+  if (!chats.length || !process.env.TELEGRAM_BOT_TOKEN) return;
 
-    const res = await fetch(`${apiBase()}/sendDocument`, {
-      method: 'POST',
-      body: form
-    });
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    console.warn('Could not send document to Telegram:', err.message);
+  const fileBytes = fs.readFileSync(filePath);
+  for (const chatId of chats) {
+    try {
+      const blob = new Blob([fileBytes], { type: 'application/pdf' });
+      const form = new FormData();
+      form.append('chat_id', chatId);
+      form.append('caption', caption);
+      form.append('document', blob, path.basename(filePath));
+
+      await fetch(`${apiBase()}/sendDocument`, {
+        method: 'POST',
+        body: form
+      });
+    } catch (err) {
+      console.warn(`Could not send document to Telegram chat ${chatId}:`, err.message);
+    }
   }
 }
 
 export async function sendApplicationPreview(app, job) {
-  if (!process.env.TELEGRAM_CHAT_ID) throw new Error('TELEGRAM_CHAT_ID is missing');
+  const chats = getAllowedChats();
+  if (!chats.length) throw new Error('TELEGRAM_CHAT_ID is missing');
+
   const safe = (v) => String(v ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -93,16 +104,22 @@ export async function sendApplicationPreview(app, job) {
     ]);
   }
 
-  // 1. Send the interactive preview
-  await telegramCall('sendMessage', {
-    chat_id: process.env.TELEGRAM_CHAT_ID,
-    text,
-    parse_mode: 'HTML',
-    disable_web_page_preview: true,
-    reply_markup: { inline_keyboard: buttons }
-  });
+  // 1. Send the interactive preview to each authorized user
+  for (const chatId of chats) {
+    try {
+      await telegramCall('sendMessage', {
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+        reply_markup: { inline_keyboard: buttons }
+      });
+    } catch (err) {
+      console.warn(`Failed to send preview to chat ${chatId}:`, err.message);
+    }
+  }
 
-  // 2. Deliver the tailored PDF directly to Telegram
+  // 2. Deliver the tailored PDF directly to Telegram for each authorized user
   if (app.resumeFile && fs.existsSync(app.resumeFile)) {
     await sendTelegramDocument(
       app.resumeFile,
