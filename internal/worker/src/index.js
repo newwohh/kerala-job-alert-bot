@@ -19,7 +19,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-app.get('/health', (_req, res) => res.json({ ok: true, profile: profile.name, region: 'Sharjah, UAE' }));
+app.get('/health', (_req, res) => res.json({ ok: true, status: 'healthy', worker: 'active' }));
 
 app.post('/jobs/search', requireAdmin, async (req, res) => {
   try {
@@ -181,7 +181,7 @@ async function handleMessage(update) {
   if (text.startsWith('/get-one') || text.startsWith('/get_one') || text === '/get') {
     await telegramCall('sendMessage', {
       chat_id: fromChat,
-      text: '🔍 Searching online for a new job matching Merin’s profile now...'
+      text: `🔍 Searching online for a new job matching ${profile.name || 'your'} profile now...`
     });
 
     try {
@@ -209,7 +209,7 @@ async function handleMessage(update) {
   } else if (text === '/start') {
     await telegramCall('sendMessage', {
       chat_id: fromChat,
-      text: `👋 Hello! I am your UAE Job Agent for Merin Raju.\n\n⏰ I automatically search and send 5 new jobs every day at 7:00 PM UAE time.\n\n⚡️ You can also trigger an immediate job search anytime by sending: /get-one`
+      text: `👋 Hello! I am your Job Assistant for ${profile.name || 'you'}.\n\n⏰ I automatically search and send 5 new jobs every day at 7:00 PM UAE time.\n\n⚡️ You can also trigger an immediate job search anytime by sending: /get-one`
     });
   }
 }
@@ -273,7 +273,7 @@ cron.schedule(cronSchedule, async () => {
 });
 
 app.listen(port, () => {
-  console.log(`Sharjah Job Agent listening on http://localhost:${port}`);
+  console.log(`Worker listening on http://localhost:${port}`);
   console.log(`Daily cron active: "${cronSchedule}" (15:00 UTC / 7:00 PM UAE)`);
 });
 telegramPoller().catch(e => console.error('Telegram poller stopped:', e));

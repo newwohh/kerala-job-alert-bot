@@ -9,9 +9,9 @@ module.exports = {
       max_memory_restart: "200M"
     },
     {
-      name: "sharjah-agent",
+      name: "worker",
       script: "src/index.js",
-      cwd: "sharjah-job-agent",
+      cwd: "internal/worker",
       instances: 1,
       autorestart: true,
       watch: false,

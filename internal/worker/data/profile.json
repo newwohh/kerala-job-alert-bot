@@ -1,0 +1,63 @@
+{
+  "name": "Candidate",
+  "headline": "QUALITY ASSURANCE ANALYST — SOFTWARE TESTER",
+  "location": "UAE",
+  "visaStatus": "Valid Residency Visa",
+  "phone": "+971 50 000 0000",
+  "email": "applicant@example.com",
+  "linkedin": "linkedin.com/in/applicant",
+  "summary": "Software Quality Assurance Engineer with 5+ years of experience in Manual Testing, Functional Testing, Regression Testing, Integration Testing, API Testing, and Web & Mobile Application Testing. Skilled in SDLC, STLC, test case design, defect lifecycle management, JIRA, Postman, Agile Scrum, and release validation.",
+  "experience": [
+    {
+      "title": "Software Tester",
+      "company": "Technology Services",
+      "location": "India",
+      "dates": "2024 – 2026",
+      "bullets": [
+        "Performed Manual, Functional, Regression, Integration, and API Testing for web and mobile applications.",
+        "Designed and executed 2,500+ test cases, ensuring complete test coverage and release readiness.",
+        "Reported, tracked, and verified 800+ software defects using JIRA while collaborating closely with developers.",
+        "Supported 60+ production releases by validating application functionality and APIs using Postman.",
+        "Tested flight booking, hotel booking, tour package, and payment modules across Android, iOS, and Web platforms.",
+        "Designed and executed test cases, reported and verified defects using JIRA, validated APIs with Postman, and supported production releases."
+      ]
+    },
+    {
+      "title": "Software Tester",
+      "company": "Software Systems Pvt. Ltd.",
+      "location": "India",
+      "dates": "2019 – 2022",
+      "bullets": [
+        "Executed manual testing for web and mobile applications by preparing and running functional, regression, smoke, and sanity test cases.",
+        "Identified, documented, and verified software defects while working closely with development teams.",
+        "Participated in requirement analysis, Agile sprint activities, and release validation throughout the SDLC.",
+        "Maintained testing documentation and ensured software quality before production deployment.",
+        "Collaborated with business analysts, developers, and QA teams to validate business requirements and ensure timely defect resolution."
+      ]
+    },
+    {
+      "title": "Computer Science Trainer",
+      "company": "Educational Institution",
+      "location": "India",
+      "dates": "2018 – 2019",
+      "bullets": [
+        "Delivered computer science training sessions for students using structured lesson plans and practical demonstrations.",
+        "Evaluated student performance through assessments and provided continuous academic guidance.",
+        "Developed classroom materials and monitored student progress to improve learning outcomes.",
+        "Supported academic activities while maintaining effective classroom management and student engagement."
+      ]
+    }
+  ],
+  "skills": ["Manual Testing", "Functional Testing", "Regression Testing", "Integration Testing", "API Testing", "Web Application Testing", "Mobile Application Testing", "JIRA", "Postman", "SDLC", "STLC", "Agile Scrum", "Test Case Design", "Defect Tracking", "Microsoft Excel", "Microsoft Office", "Flight Booking Systems", "Hotel Booking Systems"],
+  "education": [
+    {"degree":"Master of Computer Application (MCA)","institution":"University Arts and Science College","dates":"2016 – 2018"},
+    {"degree":"Bachelor of Computer Application (BCA)","institution":"College of Applied Sciences","dates":"2012 – 2015"}
+  ],
+  "achievements": [
+    "Executed 5,000+ test cases across web and mobile applications.",
+    "Reported and verified 1,800+ software defects using JIRA.",
+    "Supported 80+ successful production releases while ensuring application quality and release readiness."
+  ],
+  "languages": ["English", "Malayalam", "Hindi", "Tamil"],
+  "availability": "Available to Join Immediately"
+}

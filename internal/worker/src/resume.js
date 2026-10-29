@@ -31,8 +31,8 @@ export async function tailorApplication(job) {
     summary: profile.summary,
     skills: profile.skills,
     experience: profile.experience,
-    emailSubject: `Application for ${job.title} — Merin Raju`,
-    emailBody: `Dear Hiring Team,\n\nI am writing to express my strong interest in the ${job.title} role${job.company ? ` at ${job.company}` : ''}. With over 5 years of software quality assurance experience, I specialize in manual, functional, regression, integration, and API testing across web and mobile platforms.\n\nPlease find my resume attached for your consideration. I am based in Sharjah, holding a valid residency visa, and available to join immediately.\n\nThank you for your time and consideration.\n\nBest regards,\n${profile.name}`,
+    emailSubject: `Application for ${job.title} — ${profile.name}`,
+    emailBody: `Dear Hiring Team,\n\nI am writing to express my strong interest in the ${job.title} role${job.company ? ` at ${job.company}` : ''}. With over 5 years of software quality assurance experience, I specialize in manual, functional, regression, integration, and API testing across web and mobile platforms.\n\nPlease find my resume attached for your consideration. I am based in ${profile.location || 'UAE'}, holding a valid residency visa, and available to join immediately.\n\nThank you for your time and consideration.\n\nBest regards,\n${profile.name}`,
     matchScore: 0,
     missingRequirements: []
   };

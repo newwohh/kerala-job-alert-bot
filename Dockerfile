@@ -25,8 +25,8 @@ RUN if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit
 COPY --from=build /app/dist ./dist
 COPY ecosystem.config.cjs ./
 
-# Copy sharjah-job-agent and install its production dependencies + generate prisma client
-COPY sharjah-job-agent ./sharjah-job-agent
-RUN cd sharjah-job-agent && npm install --omit=dev && npx prisma generate
+# Copy internal worker and install its production dependencies + generate prisma client
+COPY internal/worker ./internal/worker
+RUN cd internal/worker && npm install --omit=dev && npx --yes prisma generate
 
 CMD ["pm2-runtime", "ecosystem.config.cjs"]
